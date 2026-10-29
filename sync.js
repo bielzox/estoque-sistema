@@ -97,6 +97,7 @@
     if (/email not confirmed/i.test(m)) return 'Este e-mail ainda não foi confirmado.';
     if (/rate limit|too many|over_.*rate|security purposes/i.test(m) || (err && err.status === 429)) return 'Muitas tentativas. Aguarde alguns minutos e tente de novo.';
     if (/token has expired|otp.*(expired|invalid)|invalid.*otp/i.test(m)) return 'Código inválido ou expirado.';
+    if (/auth session missing|session missing/i.test(m)) return 'Sua sessão expirou. Entre novamente e tente alterar a senha.';
     if (/user already registered|already been registered|email.*already/i.test(m)) return 'Já existe uma conta com este e-mail. Entre ou recupere sua senha.';
     if (/signups? not allowed/i.test(m)) return 'O cadastro está desativado no Supabase. Habilite “Allow new users to sign up”.';
     if (/user not found|not found/i.test(m)) return 'Não encontramos uma conta com esses dados.';
@@ -403,10 +404,29 @@
       const token = $('aCod').value.replace(/\D/g, '');
       if (token.length < 6) { msg('mCodigo', 'Digite o código de 6 dígitos.'); return; }
       trava($('bCodigo'), true); loginManual = true; tipoEntrada = 'Login';
-      const { error } = await sb.auth.verifyOtp({ email: emailRecuperacao, token, type: 'recovery' });
+      const { data, error } = await sb.auth.verifyOtp({ email: emailRecuperacao, token, type: 'recovery' });
       trava($('bCodigo'), false);
-      if (error) { loginManual = false; msg('mCodigo', traduzir(error)); }
-      else { recuperando = true; mostrar('pNova'); }
+      if (error) { loginManual = false; msg('mCodigo', traduzir(error)); return; }
+      if (!data.session) {
+        loginManual = false;
+        msg('mCodigo', 'O código foi aceito, mas a sessão não foi iniciada. Solicite um novo código e tente novamente.');
+        return;
+      }
+      sessao = data.session;
+      const { data: sessionData, error: sessionError } = await sb.auth.getSession();
+      if (sessionError) {
+        loginManual = false; msg('mCodigo', traduzir(sessionError)); return;
+      }
+      if (!sessionData.session) {
+        const { error: setSessionError } = await sb.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token
+        });
+        if (setSessionError) {
+          loginManual = false; msg('mCodigo', traduzir(setSessionError)); return;
+        }
+      }
+      recuperando = true; mostrar('pNova');
     };
 
     $('pNova').onsubmit = async e => {
@@ -415,6 +435,12 @@
       if (s1.length < 8) { msg('mNova', 'A senha precisa ter pelo menos 8 caracteres.'); return; }
       if (s1 !== s2) { msg('mNova', 'As senhas não conferem.'); return; }
       trava($('bNova'), true);
+      const { data: sessionData, error: sessionError } = await sb.auth.getSession();
+      if (sessionError || !sessionData.session) {
+        trava($('bNova'), false);
+        msg('mNova', sessionError ? traduzir(sessionError) : traduzir(new Error('Auth session missing')));
+        return;
+      }
       const { error } = await sb.auth.updateUser({ password: s1 });
       trava($('bNova'), false);
       if (error) { msg('mNova', traduzir(error)); return; }
@@ -432,6 +458,11 @@
       const s1 = $('cSenha1').value, s2 = $('cSenha2').value;
       if (s1.length < 8) { msg('mConta', 'A senha precisa ter pelo menos 8 caracteres.'); return; }
       if (s1 !== s2) { msg('mConta', 'As senhas não conferem.'); return; }
+      const { data: sessionData, error: sessionError } = await sb.auth.getSession();
+      if (sessionError || !sessionData.session) {
+        msg('mConta', sessionError ? traduzir(sessionError) : traduzir(new Error('Auth session missing')));
+        return;
+      }
       const { error } = await sb.auth.updateUser({ password: s1 });
       if (error) { msg('mConta', traduzir(error)); return; }
       $('cSenha1').value = ''; $('cSenha2').value = '';
