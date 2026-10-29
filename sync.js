@@ -24,7 +24,7 @@
   let sb = null, sessao = null, canal = null;
   let entrou = false, offline = false, recuperando = false, loginManual = false, tipoEntrada = 'Login';
   let conectado = false, enviando = false, puxando = false, pendentePuxar = false;
-  let erroSync = false, aplicando = false, painelAtual = '', emailRecuperacao = '';
+  let erroSync = false, aplicando = false, painelAtual = '', emailRecuperacao = '', sessaoRecuperacao = null;
   let timerEnvio = null, timerPuxar = null, timerRetry = null, timers = [];
 
   /* ------------------------------------------------------------------ fila de alterações locais */
@@ -412,21 +412,19 @@
         msg('mCodigo', 'O código foi aceito, mas a sessão não foi iniciada. Solicite um novo código e tente novamente.');
         return;
       }
-      sessao = data.session;
-      const { data: sessionData, error: sessionError } = await sb.auth.getSession();
-      if (sessionError) {
-        loginManual = false; msg('mCodigo', traduzir(sessionError)); return;
+      recuperando = true;
+      const { data: sessionData, error: setSessionError } = await sb.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token
+      });
+      if (setSessionError || !sessionData.session) {
+        recuperando = false; loginManual = false;
+        msg('mCodigo', setSessionError ? traduzir(setSessionError) : 'Não foi possível iniciar a sessão de recuperação. Solicite um novo código.');
+        return;
       }
-      if (!sessionData.session) {
-        const { error: setSessionError } = await sb.auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token
-        });
-        if (setSessionError) {
-          loginManual = false; msg('mCodigo', traduzir(setSessionError)); return;
-        }
-      }
-      recuperando = true; mostrar('pNova');
+      sessaoRecuperacao = sessionData.session;
+      sessao = sessionData.session;
+      mostrar('pNova');
     };
 
     $('pNova').onsubmit = async e => {
@@ -436,16 +434,35 @@
       if (s1 !== s2) { msg('mNova', 'As senhas não conferem.'); return; }
       trava($('bNova'), true);
       const { data: sessionData, error: sessionError } = await sb.auth.getSession();
-      if (sessionError || !sessionData.session) {
+      if (sessionError) {
         trava($('bNova'), false);
-        msg('mNova', sessionError ? traduzir(sessionError) : traduzir(new Error('Auth session missing')));
+        msg('mNova', traduzir(sessionError));
         return;
       }
+      let sessaoAtual = sessionData.session;
+      if (sessaoRecuperacao && (!sessaoAtual || sessaoAtual.user.id !== sessaoRecuperacao.user.id)) {
+        const { data, error } = await sb.auth.setSession({
+          access_token: sessaoRecuperacao.access_token,
+          refresh_token: sessaoRecuperacao.refresh_token
+        });
+        if (error) {
+          trava($('bNova'), false);
+          msg('mNova', traduzir(error));
+          return;
+        }
+        sessaoAtual = data.session;
+      }
+      if (!sessaoAtual) {
+        trava($('bNova'), false);
+        msg('mNova', 'A sessão de recuperação expirou. Solicite um novo código e tente novamente.');
+        return;
+      }
+      sessao = sessaoAtual;
       const { error } = await sb.auth.updateUser({ password: s1 });
       trava($('bNova'), false);
       if (error) { msg('mNova', traduzir(error)); return; }
       $('nSenha1').value = ''; $('nSenha2').value = '';
-      recuperando = false; loginManual = true;
+      recuperando = false; sessaoRecuperacao = null; loginManual = true;
       registrarLog('🔑 Senha redefinida', 'A senha de acesso foi redefinida pela recuperação de senha.', 'aviso');
       if (!entrou) entrar();
     };
