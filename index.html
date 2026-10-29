@@ -15,8 +15,9 @@
 :root{--bg:#eceff1;--card:#fff;--ink:#1f2a30;--mut:#5f6f78;--line:#cfd6da;--acc:#0509f2;--accink:#ffffff;--ok:#2e7d4f;--warn:#b26a00;--bad:#b3261e;--side:#1f2a30;--sidei:#e8edf0;--wallpaper-overlay:rgba(236,239,241,.68)}
 @media(prefers-color-scheme:dark){:root{--bg:#161d21;--card:#202a30;--ink:#e8edf0;--mut:#9aabb3;--line:#33424a;--side:#10161a;--ok:#5fc08a;--warn:#f0a53a;--bad:#ff8a80;--wallpaper-overlay:rgba(22,29,33,.68)}}
 *{box-sizing:border-box}
-body{margin:0;font-family:"Segoe UI",Roboto,Arial,sans-serif;background-color:var(--bg);background-image:linear-gradient(var(--wallpaper-overlay),var(--wallpaper-overlay)),var(--wallpaper,url("./icone.png"));background-position:center;background-size:cover;background-attachment:fixed;color:var(--ink);display:flex;min-height:100vh}
-aside{width:230px;background:var(--side);color:var(--sidei);padding:18px 10px;flex-shrink:0;position:sticky;top:0;height:100vh;overflow:auto}
+body{margin:0;font-family:"Segoe UI",Roboto,Arial,sans-serif;background-color:var(--bg);background-image:linear-gradient(var(--wallpaper-overlay),var(--wallpaper-overlay)),var(--wallpaper,url("./icone.png"));background-position:center;background-size:cover;background-attachment:fixed;color:var(--ink);display:flex;min-height:100vh;isolation:isolate}
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:var(--brand-logo,url("./icone.png")) right 8% bottom 8%/ min(42vw,420px) auto no-repeat;opacity:.12}
+aside{width:230px;background:var(--side);color:var(--sidei);padding:18px 10px;flex-shrink:0;position:sticky;z-index:1;top:0;height:100vh;overflow:auto}
 aside h1{font-size:17px;margin:0 8px 16px;font-weight:700}
 aside h1 span{display:block;font-size:12px;font-weight:400;color:#9aabb3;margin-top:2px}
 .sec{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:#9aabb3;margin:18px 10px 6px}
@@ -26,7 +27,7 @@ aside h1 span{display:block;font-size:12px;font-weight:400;color:#9aabb3;margin-
 .side-btn{margin:10px 8px 0;font-size:13px;color:#9aabb3;background:none;border:0;cursor:pointer;text-decoration:underline;padding:0;display:block}
 #mCat{color:#fff;background:linear-gradient(110deg,#0564f2,#00a6a6);padding:9px 12px;border-radius:8px;text-decoration:none;font-weight:700;box-shadow:0 3px 10px #0564f244;transition:transform .18s ease,box-shadow .18s ease,filter .18s ease}
 #mCat:hover{transform:translateY(-2px);box-shadow:0 6px 16px #0564f266;filter:saturate(1.2)}
-main{flex:1;padding:20px;min-width:0}
+main{position:relative;z-index:1;flex:1;padding:20px;min-width:0}
 .bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
 input,select,textarea{font:inherit;padding:9px 11px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);width:100%}
 textarea{resize:vertical}
@@ -87,12 +88,13 @@ button.d{color:var(--bad)}
 dialog{border:0;border-radius:10px;padding:22px;width:min(520px,94vw);background:var(--card);color:var(--ink);max-height:92vh}
 dialog::backdrop{background:#000a}
 [hidden]{display:none!important}
-#auth{display:none;position:fixed;inset:0;z-index:2000;align-items:center;justify-content:center;padding:24px;overflow:auto;background:radial-gradient(ellipse at 18% 18%,#185078 0,transparent 42%),radial-gradient(ellipse at 85% 85%,#07544f 0,transparent 38%),linear-gradient(135deg,#101d28,#071117 72%)}
+#auth{display:none;position:fixed;inset:0;z-index:2000;align-items:center;justify-content:center;padding:24px;overflow:auto;background:radial-gradient(ellipse at 18% 18%,#0578eb09 0,transparent 42%),radial-gradient(ellipse at 85% 85%,#0025f72c 0,transparent 38%),linear-gradient(135deg,#016fff49,#131414fd 72%)}
+#auth::before{content:"";position:fixed;inset:0;pointer-events:none;background:var(--brand-logo,url("./icone.png")) right 6% bottom 6%/ min(34vw,320px) auto no-repeat;opacity:.2}
 html.ic-bloqueado #auth{display:flex}
 html.ic-bloqueado aside,html.ic-bloqueado main{visibility:hidden}
-.auth-card{width:min(440px,100%);max-height:calc(100vh - 48px);overflow:auto;margin:auto;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:20px;padding:32px;box-shadow:0 26px 80px #0009;animation:auth-enter .28s ease both}
+.auth-card{position:relative;z-index:1;width:min(440px,100%);max-height:calc(100vh - 48px);overflow:auto;margin:auto;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:20px;padding:32px;box-shadow:0 26px 80px #0009;animation:auth-enter .28s ease both}
 .auth-brand{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:28px}
-.auth-mark{width:48px;height:48px;display:grid;place-items:center;border-radius:15px;background:linear-gradient(135deg,#0564f2,#00a6a6);color:#fff;font-size:16px;font-weight:900;letter-spacing:-1px;box-shadow:0 8px 20px #0564f244}
+.auth-mark{width:48px;height:48px;display:block;flex:none;object-fit:contain;border-radius:15px;box-shadow:0 8px 20px #0564f244}
 .auth-logo{font-size:19px;font-weight:800;line-height:1.2}
 .auth-logo span{display:block;font-size:12px;font-weight:500;color:var(--mut);margin-top:4px}
 .auth-p{display:none}.auth-p.on{display:block}
@@ -201,7 +203,7 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
   .foot button{flex:1}
   .tbl{min-width:800px}
 }
-@media print{:root{--bg:#fff;--card:#fff;--ink:#000;--mut:#333;--line:#999}aside,.bar,#toast{display:none!important}main{padding:0}body{display:block}.tw{border:0}.tbl th{background:#eee!important;-webkit-print-color-adjust:exact}}
+@media print{:root{--bg:#fff;--card:#fff;--ink:#000;--mut:#333;--line:#999}aside,.bar,#toast{display:none!important}main{padding:0}body{display:block}.tw{border:0}.tbl th{background:#eee!important;print-color-adjust:exact;-webkit-print-color-adjust:exact}}
 </style>
 <script src="./config.js"></script>
 <script src="./sync.js"></script>
@@ -209,7 +211,7 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
 <body>
 <div id="auth">
   <div class="auth-card">
-    <div class="auth-brand"><span class="auth-mark" aria-hidden="true">IC</span><div class="auth-logo">Intacto Car<span>Gestão de estoque</span></div></div>
+    <div class="auth-brand"><img class="auth-mark" id="authLogo" src="./icone.png" alt=""><div class="auth-logo">Intacto Car<span>Gestão de estoque</span></div></div>
     <div class="auth-p on" id="pCarregando"><p class="auth-wait">Verificando acesso…</p></div>
 
     <form class="auth-p" id="pLogin" novalidate>
@@ -279,6 +281,9 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
     <button class="side-btn" id="mCat">Gerenciar categorias</button>
   </div>
   <div class="sec">Dados</div>
+  <button class="side-btn" id="logopick">Alterar logo</button>
+  <button class="side-btn" id="logoreset">Restaurar logo original</button>
+  <input type="file" id="logofile" accept="image/*" hidden>
   <button class="side-btn" id="bgpick" style="margin-top:0">Alterar imagem de fundo</button>
   <button class="side-btn" id="bgreset">Restaurar fundo original</button>
   <button class="side-btn" id="passwordConfig">Configurar senha de exclusão</button>
@@ -584,6 +589,8 @@ async function init(){
   try{db=await abrir()}catch(e){avisar('Não foi possível abrir o banco de dados do navegador.',{tipo:'erro'});return}
   const wallpaper=localStorage.getItem('estoque-intacto-fundo');
   if(wallpaper)document.documentElement.style.setProperty('--wallpaper',`url("${wallpaper}")`);
+  const logo=localStorage.getItem('estoque-intacto-logo');
+  if(logo){$('authLogo').src=logo;document.documentElement.style.setProperty('--brand-logo',`url("${logo}")`)}
   prods=(await req(tx('prods').getAll())).map(fix);
   movs=await req(tx('movs').getAll());
   cats=await req(tx('meta').get('cats'));
@@ -986,6 +993,34 @@ $('lc').onclick=async e=>{
 };
 
 /* backup */
+$('logopick').onclick=()=>$('logofile').click();
+$('logofile').onchange=()=>{
+  const f=$('logofile').files[0];if(!f)return;
+  if(!f.type.startsWith('image/')){avisar('Escolha um arquivo de imagem.');$('logofile').value='';return}
+  const url=URL.createObjectURL(f),img=new Image();
+  img.onload=()=>{
+    try{
+      const scale=Math.min(1,512/Math.max(img.width,img.height)),canvas=document.createElement('canvas');
+      canvas.width=Math.max(1,Math.round(img.width*scale));canvas.height=Math.max(1,Math.round(img.height*scale));
+      const ctx=canvas.getContext('2d');if(!ctx)throw new Error('Não foi possível preparar a imagem.');
+      ctx.drawImage(img,0,0,canvas.width,canvas.height);
+      const data=canvas.toDataURL('image/png');
+      localStorage.setItem('estoque-intacto-logo',data);
+      $('authLogo').src=data;
+      document.documentElement.style.setProperty('--brand-logo',`url("${data}")`);
+    }catch(e){avisar('Não foi possível salvar a logo neste dispositivo. Escolha uma imagem menor ou libere espaço no navegador.',{tipo:'erro'})}
+    finally{URL.revokeObjectURL(url);$('logofile').value=''}
+  };
+  img.onerror=()=>{URL.revokeObjectURL(url);$('logofile').value='';avisar('Não foi possível abrir essa imagem.',{tipo:'erro'})};
+  img.src=url;
+};
+$('logoreset').onclick=()=>{
+  try{
+    localStorage.removeItem('estoque-intacto-logo');
+    $('authLogo').src='./icone.png';
+    document.documentElement.style.removeProperty('--brand-logo');
+  }catch(e){avisar('Não foi possível restaurar a logo original.',{tipo:'erro'})}
+};
 $('bgpick').onclick=()=>$('bgfile').click();
 $('bgfile').onchange=()=>{
   const f=$('bgfile').files[0];if(!f)return;
