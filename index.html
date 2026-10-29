@@ -107,8 +107,6 @@ html.ic-bloqueado aside,html.ic-bloqueado main{visibility:hidden}
 .auth-msg{min-height:18px;margin-top:12px;font-size:13px;line-height:1.45;color:var(--bad)}
 .auth-msg.ok{color:var(--ok)}
 .auth-wait{text-align:center;padding:18px 0}
-.auth-sep{display:flex;align-items:center;gap:10px;margin:18px 0 4px;font-size:12px;color:var(--mut)}
-.auth-sep::before,.auth-sep::after{content:"";flex:1;height:1px;background:var(--line)}
 button.link{background:none;border:0;padding:0;margin-top:14px;color:var(--acc);font:inherit;font-size:13px;cursor:pointer;display:block}
 button.link:hover{text-decoration:underline}
 .auth-switch{margin:20px 0 0!important;padding-top:16px;border-top:1px solid var(--line);text-align:center}
@@ -239,19 +237,16 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
 
     <div class="auth-p" id="pEsqueci">
       <h2>Recuperar acesso</h2>
-      <p>Escolha como receber a recuperação da senha.</p>
-      <label for="rEmail">Por e-mail (link)</label><input id="rEmail" type="email" autocomplete="email" inputmode="email">
-      <button class="s" id="bRecEmail" type="button">Enviar link por e-mail</button>
-      <div class="auth-sep">ou</div>
-      <label for="rTel">Por SMS (código no celular)</label><input id="rTel" type="tel" autocomplete="tel" inputmode="tel" placeholder="(11) 99999-9999">
-      <button class="s" id="bRecSms" type="button">Enviar código por SMS</button>
+      <p>Informe o e-mail da sua conta para receber um código de recuperação.</p>
+      <label for="rEmail">E-mail</label><input id="rEmail" type="email" autocomplete="email" inputmode="email">
+      <button class="s" id="bRecEmail" type="button">Enviar código por e-mail</button>
       <div class="auth-msg" id="mEsqueci" role="alert"></div>
       <button class="link" type="button" data-ir="pLogin">← Voltar para o login</button>
     </div>
 
     <form class="auth-p" id="pCodigo" novalidate>
       <h2>Digite o código</h2>
-      <p>Enviamos um código de 6 dígitos por SMS para o telefone <b id="codTel"></b>.</p>
+      <p>Se o e-mail estiver cadastrado, enviamos um código de 6 dígitos. Confira sua caixa de entrada e o spam.</p>
       <label for="aCod">Código</label><input id="aCod" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="000000">
       <div class="auth-msg" id="mCodigo" role="alert"></div>
       <button class="p" id="bCodigo" type="submit">Confirmar código</button>
@@ -402,13 +397,6 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
 <dialog id="dconta">
   <h2>Minha conta</h2>
   <p class="tag">E-mail: <b id="cEmail"></b></p>
-  <p class="tag">Telefone (recuperação por SMS): <b id="cTel"></b></p>
-  <label for="cTelNovo">Cadastrar ou alterar telefone</label>
-  <div class="row"><input id="cTelNovo" type="tel" inputmode="tel" placeholder="(11) 99999-9999"><button class="s" id="cTelEnviar" type="button">Enviar código</button></div>
-  <div id="cCodWrap" hidden>
-    <label for="cCod">Código recebido por SMS</label>
-    <div class="row"><input id="cCod" inputmode="numeric" autocomplete="one-time-code" maxlength="8"><button class="s" id="cCodOk" type="button">Confirmar</button></div>
-  </div>
   <label for="cSenha1">Alterar senha de acesso</label>
   <input id="cSenha1" type="password" autocomplete="new-password" placeholder="Nova senha (mínimo 8 caracteres)">
   <input id="cSenha2" type="password" autocomplete="new-password" placeholder="Repita a nova senha" style="margin-top:8px">

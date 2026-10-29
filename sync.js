@@ -24,7 +24,7 @@
   let sb = null, sessao = null, canal = null;
   let entrou = false, offline = false, recuperando = false, loginManual = false, tipoEntrada = 'Login';
   let conectado = false, enviando = false, puxando = false, pendentePuxar = false;
-  let erroSync = false, aplicando = false, painelAtual = '', telRecuperacao = '', telConta = '';
+  let erroSync = false, aplicando = false, painelAtual = '', emailRecuperacao = '';
   let timerEnvio = null, timerPuxar = null, timerRetry = null, timers = [];
 
   /* ------------------------------------------------------------------ fila de alterações locais */
@@ -91,16 +91,6 @@
   }
   const igual = (local, remoto) => estavel(JSON.parse(JSON.stringify(local))) === estavel(remoto);
 
-  function normalizarTelefone(v) {
-    const t = String(v || '').trim(), d = t.replace(/\D/g, '');
-    if (!d) return null;
-    if (t.startsWith('+')) return d.length >= 10 && d.length <= 15 ? '+' + d : null;
-    if (d.length === 10 || d.length === 11) return '+55' + d;
-    if ((d.length === 12 || d.length === 13) && d.startsWith('55')) return '+' + d;
-    return null;
-  }
-  const mascarar = tel => '••••' + String(tel).slice(-4);
-
   function traduzir(err) {
     const m = String((err && (err.message || err.error_description)) || err || '');
     if (/invalid login credentials/i.test(m)) return 'E-mail ou senha incorretos.';
@@ -110,7 +100,6 @@
     if (/user already registered|already been registered|email.*already/i.test(m)) return 'Já existe uma conta com este e-mail. Entre ou recupere sua senha.';
     if (/signups? not allowed/i.test(m)) return 'O cadastro está desativado no Supabase. Habilite “Allow new users to sign up”.';
     if (/user not found|not found/i.test(m)) return 'Não encontramos uma conta com esses dados.';
-    if (/unsupported phone provider|sms|phone provider|twilio/i.test(m)) return 'O envio de SMS ainda não está configurado no servidor.';
     if (/same password|different from the old/i.test(m)) return 'A nova senha precisa ser diferente da atual.';
     if (/password.*(weak|short|at least|characters)/i.test(m)) return 'Senha muito fraca. Use pelo menos 8 caracteres.';
     if (/failed to fetch|network|load failed/i.test(m)) return 'Sem conexão com a internet.';
@@ -337,9 +326,8 @@
   function preencherConta() {
     const u = sessao && sessao.user;
     $('cEmail').textContent = (u && u.email) || '—';
-    $('cTel').textContent = (u && u.phone) ? '+' + String(u.phone).replace(/^\+/, '') : 'não cadastrado';
-    ['cTelNovo', 'cCod', 'cSenha1', 'cSenha2'].forEach(i => { $(i).value = ''; });
-    $('cCodWrap').hidden = true; msg('mConta', '');
+    ['cSenha1', 'cSenha2'].forEach(i => { $(i).value = ''; });
+    msg('mConta', '');
   }
 
   function montarUI() {
@@ -391,33 +379,23 @@
 
     $('bRecEmail').onclick = async () => {
       const email = $('rEmail').value.trim();
-      if (!email) { msg('mEsqueci', 'Informe o e-mail da conta.'); return; }
-      const redirectTo = urlSite();
-      if (!redirectTo) { msg('mEsqueci', 'Falta configurar o endereço do site (siteUrl) em config.js.'); return; }
+      if (!email || $('rEmail').validity.typeMismatch) { msg('mEsqueci', 'Informe um endereço de e-mail válido.'); return; }
       trava($('bRecEmail'), true);
-      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo });
+      const { error } = await sb.auth.resetPasswordForEmail(email);
       trava($('bRecEmail'), false);
-      if (error) msg('mEsqueci', traduzir(error));
-      else msg('mEsqueci', 'Se este e-mail estiver cadastrado, enviamos um link para criar uma nova senha. Confira também o spam. O link abre o site para você definir a nova senha.', true);
+      if (error) { msg('mEsqueci', traduzir(error)); return; }
+      emailRecuperacao = email;
+      $('aCod').value = '';
+      mostrar('pCodigo');
+      msg('mCodigo', 'Se este e-mail estiver cadastrado, enviamos o código. Confira também o spam.', true);
     };
 
-    const enviarCodigoRecuperacao = async () => {
-      const tel = normalizarTelefone($('rTel').value);
-      if (!tel) { msg('mEsqueci', 'Telefone inválido. Use DDD + número, ex.: (11) 99999-9999.'); return false; }
-      const { error } = await sb.auth.signInWithOtp({ phone: tel, options: { shouldCreateUser: false } });
-      if (error) { msg(painelAtual === 'pCodigo' ? 'mCodigo' : 'mEsqueci', traduzir(error)); return false; }
-      telRecuperacao = tel; recuperando = true;
-      return true;
-    };
-    $('bRecSms').onclick = async () => {
-      trava($('bRecSms'), true);
-      const ok = await enviarCodigoRecuperacao();
-      trava($('bRecSms'), false);
-      if (ok) { $('codTel').textContent = mascarar(telRecuperacao); $('aCod').value = ''; mostrar('pCodigo'); }
-    };
     $('bReenviar').onclick = async () => {
+      if (!emailRecuperacao) { mostrar('pEsqueci'); return; }
       trava($('bReenviar'), true);
-      if (await enviarCodigoRecuperacao()) msg('mCodigo', 'Novo código enviado.', true);
+      const { error } = await sb.auth.resetPasswordForEmail(emailRecuperacao);
+      if (error) msg('mCodigo', traduzir(error));
+      else msg('mCodigo', 'Se este e-mail estiver cadastrado, enviamos um novo código. Confira também o spam.', true);
       trava($('bReenviar'), false);
     };
     $('pCodigo').onsubmit = async e => {
@@ -425,9 +403,10 @@
       const token = $('aCod').value.replace(/\D/g, '');
       if (token.length < 6) { msg('mCodigo', 'Digite o código de 6 dígitos.'); return; }
       trava($('bCodigo'), true); loginManual = true; tipoEntrada = 'Login';
-      const { error } = await sb.auth.verifyOtp({ phone: telRecuperacao, token, type: 'sms' });
+      const { error } = await sb.auth.verifyOtp({ email: emailRecuperacao, token, type: 'recovery' });
       trava($('bCodigo'), false);
       if (error) { loginManual = false; msg('mCodigo', traduzir(error)); }
+      else { recuperando = true; mostrar('pNova'); }
     };
 
     $('pNova').onsubmit = async e => {
@@ -458,26 +437,6 @@
       $('cSenha1').value = ''; $('cSenha2').value = '';
       msg('mConta', 'Senha alterada.', true);
       registrarLog('🔑 Senha alterada', 'A senha de acesso foi alterada em Minha conta.', 'aviso');
-    };
-    $('cTelEnviar').onclick = async () => {
-      const tel = normalizarTelefone($('cTelNovo').value);
-      if (!tel) { msg('mConta', 'Telefone inválido. Use DDD + número, ex.: (11) 99999-9999.'); return; }
-      trava($('cTelEnviar'), true);
-      const { error } = await sb.auth.updateUser({ phone: tel });
-      trava($('cTelEnviar'), false);
-      if (error) { msg('mConta', traduzir(error)); return; }
-      telConta = tel; $('cCodWrap').hidden = false; $('cCod').focus();
-      msg('mConta', 'Código enviado por SMS. Digite abaixo para confirmar o telefone.', true);
-    };
-    $('cCodOk').onclick = async () => {
-      const token = $('cCod').value.replace(/\D/g, '');
-      if (token.length < 6) { msg('mConta', 'Digite o código de 6 dígitos.'); return; }
-      const { error } = await sb.auth.verifyOtp({ phone: telConta, token, type: 'phone_change' });
-      if (error) { msg('mConta', traduzir(error)); return; }
-      const { data } = await sb.auth.getUser();
-      if (data && data.user && sessao) sessao.user = data.user;
-      preencherConta(); msg('mConta', 'Telefone confirmado.', true);
-      registrarLog('📱 Telefone cadastrado', 'Um telefone foi confirmado para recuperação de senha por SMS.', 'info');
     };
   }
 

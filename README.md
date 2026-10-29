@@ -9,7 +9,7 @@ e como aplicativo para Windows.
 - `main.js`, `package.json` e `package-lock.json`: aplicativo Windows e suas
   dependências.
 - `config.js`, `sync.js` e `supabase/setup.sql`: login, recuperação de senha por
-  e-mail/SMS, sincronização em tempo real e logs no Discord. Passo a passo em
+  código no e-mail, sincronização em tempo real e logs no Discord. Passo a passo em
   `COMO-CONFIGURAR-SINCRONIZACAO.md`.
 - `gerar-instalador.bat` e `testar-sem-instalar.bat`: atalhos para gerar e
   executar o aplicativo no Windows.

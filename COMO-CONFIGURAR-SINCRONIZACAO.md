@@ -1,4 +1,4 @@
-# Guia: login, recuperação de senha por SMS, logs no Discord e sincronização site ⇄ app
+# Guia: login, recuperação de senha por e-mail, logs no Discord e sincronização site ⇄ app
 
 Tudo isso **já está programado** no projeto (site e aplicativo usam o mesmo código).
 Falta só você criar o servidor gratuito (Supabase) e ligar. São ~20 minutos.
@@ -11,9 +11,9 @@ Falta só você criar o servidor gratuito (Supabase) e ligar. São ~20 minutos.
 | Recurso | Como funciona |
 |---|---|
 | Login | E-mail + senha, no site e no aplicativo |
-| Esqueci a senha | Link por **e-mail** ou código de 6 dígitos por **SMS** |
-| Recuperação | Depois do link/código, o sistema pede a nova senha |
-| Minha conta | Cadastrar telefone (SMS), trocar senha, sair |
+| Esqueci a senha | Código de 6 dígitos por **e-mail** |
+| Recuperação | Depois de confirmar o código, o sistema pede a nova senha |
+| Minha conta | Trocar senha e sair |
 | Site ⇄ app | O que um fizer aparece no outro em instantes |
 | Discord | Cada ação importante vira uma mensagem no canal que você escolher |
 
@@ -57,34 +57,24 @@ Cada pessoa pode criar sua conta no painel com e-mail e senha. Se preferir,
 também é possível criar contas manualmente em **Authentication → Users → Add user
 → Create new user** e marcar **Auto Confirm User**.
 
-## Passo 5 — Endereço do site (para o link de recuperação por e-mail)
+## Passo 5 — E-mail de recuperação por código
 
-1. **Authentication → URL Configuration**.
-2. **Site URL:** o endereço do seu site no GitHub Pages
-   (ex.: `https://seuusuario.github.io/intacto-car/`).
-3. **Redirect URLs → Add URL:** o mesmo endereço.
+1. Abra **Authentication → Emails → Templates → Reset Password**.
+2. No conteúdo do e-mail, inclua o código usando `{{ .Token }}`. Por exemplo:
 
-> O e-mail que o Supabase envia de graça tem limite baixo de mensagens. Para uso diário,
-> configure um e-mail próprio em **Authentication → Emails → SMTP Settings**
-> (pode ser uma conta do Gmail com "senha de app", Brevo, Resend etc.).
+   ```html
+   <p>Seu código para redefinir a senha é: {{ .Token }}</p>
+   ```
 
-## Passo 6 — Código por SMS (opcional, mas é o que você pediu)
+3. Salve o template. Para uso frequente, configure um servidor de envio em
+   **Authentication → Emails → SMTP Settings**; o serviço padrão tem limite baixo.
+4. Em **Authentication → URL Configuration**, mantenha o endereço do site no
+   **Site URL** e adicione-o também a **Redirect URLs**.
 
-O SMS **é cobrado por mensagem pelo provedor** (o Supabase só repassa). Sem esse passo,
-tudo funciona, só o botão de SMS avisa que não está configurado.
+> O template **Reset Password** precisa exibir `{{ .Token }}`; sem o código no e-mail,
+> não será possível concluir a recuperação pelo sistema.
 
-1. **Authentication → Sign In / Providers → Phone** → ative **Enable Phone provider**.
-2. Escolha o provedor de SMS (**Twilio**, **MessageBird** ou **Vonage**) e preencha as
-   credenciais que a conta dele fornece. (Twilio: Account SID, Auth Token e o número ou
-   *Messaging Service SID*.)
-3. **Para testar de graça:** ainda nessa tela use **Test Phone Numbers and OTPs**:
-   cadastre um número de teste e um código fixo (ex.: `123456`).
-4. Depois de entrar no sistema, cada pessoa cadastra o próprio celular em
-   **Minha conta e sair → Cadastrar ou alterar telefone** (digite `(11) 99999-9999` e
-   confirme o código recebido). O telefone precisa estar cadastrado para a recuperação
-   por SMS funcionar.
-
-## Passo 7 — Logs no Discord
+## Passo 6 — Logs no Discord
 
 1. No Discord, abra o canal que vai receber os logs → **Editar canal (engrenagem) →
    Integrações → Webhooks → Novo webhook**.
@@ -108,7 +98,7 @@ exclusões (com a lista do que foi apagado), categorias, senha de exclusão, bac
 restaurado, senha redefinida. Cada mensagem mostra o e-mail de quem fez e se foi pelo
 **site** ou pelo **aplicativo**.
 
-## Passo 8 — Ligar o sistema ao servidor
+## Passo 7 — Ligar o sistema ao servidor
 
 Abra o arquivo **`config.js`** e preencha com o que você anotou:
 
@@ -125,7 +115,7 @@ window.INTACTO_CONFIG = {
   `Estoque-Intacto-Car.exe`.
 - **Celular:** abra o site e instale de novo / atualize o app instalado.
 
-## Passo 9 — Primeiro acesso
+## Passo 8 — Primeiro acesso
 
 1. Abra o sistema e entre com o e-mail e a senha criados no passo 4.
 2. No **primeiro login de cada aparelho**, os dados que já estão nele sobem ao servidor
@@ -141,8 +131,7 @@ window.INTACTO_CONFIG = {
 - [ ] Criar um produto no site → aparece no app sem recarregar.
 - [ ] Fazer uma saída no app → o estoque muda no site.
 - [ ] Mensagens chegando no canal do Discord.
-- [ ] "Esqueci minha senha" por e-mail → link → nova senha.
-- [ ] "Esqueci minha senha" por SMS → código → nova senha.
+- [ ] "Esqueci minha senha" por e-mail → código → nova senha.
 - [ ] Desligar a internet, lançar uma entrada, religar → sincroniza sozinho.
 
 ## Problemas comuns
@@ -150,9 +139,7 @@ window.INTACTO_CONFIG = {
 | Sintoma | O que fazer |
 |---|---|
 | "E-mail ou senha incorretos" | Confira se o usuário foi criado no passo 4 com **Auto Confirm User** |
-| Não chega e-mail de recuperação | Veja o spam; configure SMTP próprio (passo 5); confira Site URL/Redirect URLs |
-| "O envio de SMS ainda não está configurado" | Faça o passo 6 (provedor de SMS) |
-| "Não encontramos uma conta com esses dados" no SMS | O telefone ainda não foi cadastrado em **Minha conta** |
+| Não chega e-mail de recuperação | Veja o spam; confira o template Reset Password e configure SMTP próprio (passo 5) |
 | Nada chega no Discord | Rode o comando do passo 7; confira se a URL do webhook está certa |
 | Fica em "Falha ao sincronizar" | Confira URL e chave no `config.js` e se o `setup.sql` rodou sem erro |
 | Projeto "pausado" no Supabase | Projetos grátis pausam após ~7 dias sem uso: reative no painel |
