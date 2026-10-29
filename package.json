@@ -1,0 +1,57 @@
+{
+  "name": "estoque-intacto-car",
+  "productName": "Estoque Intacto Car",
+  "version": "1.0.9",
+  "description": "Controle de estoque de auto pecas",
+  "author": "Auto Pecas",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --x64"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.autopecas.estoque",
+    "productName": "Estoque Intacto Car",
+    "files": [
+      "main.js",
+      "preload.js",
+      "config.js",
+      "sync.js",
+      "vendor/*",
+      "index.html",
+      "manifest.webmanifest",
+      "sw.js",
+      "icone.png",
+      "icone-192.png",
+      "icone-512.png"
+    ],
+    "directories": {
+      "output": "instalador"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "icone.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Estoque Intacto Car",
+      "runAfterFinish": true,
+      "language": "1046",
+      "artifactName": "Estoque-Intacto-Car.exe"
+    }
+  }
+}

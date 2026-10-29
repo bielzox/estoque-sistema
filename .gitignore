@@ -1,0 +1,4 @@
+/backup*.json
+/node_modules/
+/instalador/
+/backups/
