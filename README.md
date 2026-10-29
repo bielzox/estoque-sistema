@@ -42,8 +42,9 @@ pronto para distribuição.
 
 ## Publicar e instalar no celular
 
-O workflow em `.github/workflows/pages.yml` publica o site no GitHub Pages.
-Depois de publicar, abra o endereço HTTPS no navegador:
+O GitHub Pages publica automaticamente os arquivos da raiz a cada atualização
+da branch `main`; não é necessário um workflow próprio de publicação. Depois que
+o deploy padrão do Pages terminar, abra o endereço HTTPS no navegador:
 
 - **iPhone/iPad:** no Safari, toque em **Compartilhar** e em **Adicionar à Tela
   de Início**.
