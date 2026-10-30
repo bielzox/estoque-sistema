@@ -41,6 +41,41 @@ button.s{background:var(--card);color:var(--ink);border:1px solid var(--line);pa
 button:disabled{opacity:.4;cursor:default}
 button.d{color:var(--bad)}
 .grid{display:grid;grid-template-columns:1fr;gap:14px}
+.finance-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin:4px 0 18px}
+.finance-head h2{margin:4px 0;font-size:26px}
+.finance-head p,.finance-note{margin:0;color:var(--mut);font-size:13px;line-height:1.5}
+.finance-kicker{font-size:11px;font-weight:700;letter-spacing:1px;color:var(--acc)}
+.finance-filter{display:flex;align-items:end;gap:8px;flex-wrap:wrap}
+.finance-filter label{margin:0 0 4px}
+.finance-filter input{width:auto;min-width:145px}
+.finance-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.finance-card,.finance-panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;box-shadow:0 5px 18px #1f2a3010}
+.finance-card{display:flex;flex-direction:column;gap:8px;min-height:132px}
+.finance-card span{font-size:13px;color:var(--mut);font-weight:600}
+.finance-card strong{font-size:clamp(20px,2.4vw,28px);letter-spacing:-.5px;overflow-wrap:anywhere}
+.finance-card small{font-size:12px;color:var(--mut)}
+.finance-card.balance{color:#fff;background:linear-gradient(120deg,#153f50,#087f68);border:0}
+.finance-card.balance span,.finance-card.balance small{color:#e1f4ef}
+.finance-card.income strong{color:var(--ok)}
+.finance-card.expense strong{color:var(--bad)}
+.finance-card.period strong{color:var(--acc)}
+.finance-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:14px}
+.finance-panel h3{margin:0 0 14px;font-size:16px}
+.finance-flow{display:grid;gap:15px;margin-top:18px}
+.finance-flow-row{display:grid;gap:7px}
+.finance-flow-label{display:flex;justify-content:space-between;gap:12px;font-size:13px}
+.finance-flow-track{height:9px;border-radius:99px;background:#cfd6da66;overflow:hidden}
+.finance-flow-fill{height:100%;border-radius:inherit;transition:width .25s ease}
+.finance-flow-fill.income{background:var(--ok)}.finance-flow-fill.expense{background:var(--bad)}
+.finance-list{display:grid}
+.finance-entry{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+.finance-entry:last-child{border-bottom:0}
+.finance-entry-main{min-width:0}
+.finance-entry-title{font-size:13px;font-weight:700;overflow-wrap:anywhere}
+.finance-entry-meta{font-size:12px;color:var(--mut);margin-top:3px}
+.finance-entry-value{font-size:14px;font-weight:700;white-space:nowrap}
+.finance-entry-value.income{color:var(--ok)}.finance-entry-value.expense{color:var(--bad)}
+.finance-empty{padding:22px 8px;text-align:center;color:var(--mut);font-size:13px}
 .item{background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden;display:grid;grid-template-columns:260px 1fr;grid-template-rows:1fr auto}
 .ph{grid-row:1/3;align-self:start;min-height:150px;background:#cfd6da33;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:13px;cursor:zoom-in}
 .ph img{display:block;width:100%;height:auto;max-height:70vh;object-fit:contain}
@@ -174,6 +209,7 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
   aside{width:190px}
   main{padding:16px}
   .bar input:not(.grow),.bar select{flex:1;min-width:130px}
+  .finance-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-width:720px){
   body{flex-direction:column}
@@ -188,6 +224,9 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
   .bar{gap:8px}
   .bar input,.bar select,.bar .grow{width:100%;min-width:0;flex:1 1 100%}
   .bar button{min-height:42px}
+  .finance-head{align-items:stretch;flex-direction:column}
+  .finance-filter input{flex:1;min-width:130px}
+  .finance-columns{grid-template-columns:1fr}
   .item{grid-template-columns:120px 1fr}
   .body{padding:10px}
   .row{flex-wrap:wrap}
@@ -196,6 +235,7 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
   .foot button{min-height:42px}
 }
 @media(max-width:420px){
+  .finance-grid{grid-template-columns:1fr}
   .item{grid-template-columns:1fr}
   .ph{grid-row:auto}
   .body,.acts{grid-column:1}
@@ -292,6 +332,7 @@ try{
   <div class="brand"><img src="./icone.png" alt="Logo Intacto Car"><h1>Estoque<span>Intacto Car</span></h1></div>
   <div class="sync" id="syncStatus" hidden><span class="dot"></span><span id="syncTxt">Conectando…</span></div>
   <div id="nav">
+    <button class="cat" data-v="fin">Financeiro</button>
     <button class="cat on" data-v="prod">Produtos</button>
     <button class="cat" data-v="mov">Entradas e saídas</button>
     <button class="cat" data-v="rep">Relatórios</button>
@@ -315,6 +356,39 @@ try{
   <input type="file" id="rf" accept=".json" hidden>
 </aside>
 <main>
+  <section id="v-fin" hidden>
+    <div class="finance-head">
+      <div>
+        <div class="finance-kicker">PAINEL FINANCEIRO</div>
+        <h2>Fluxo de caixa</h2>
+        <p>Vendas registradas contam como dinheiro que entrou; compras, como dinheiro que saiu. Ajustes e outros motivos não alteram o caixa.</p>
+      </div>
+      <div class="finance-filter">
+        <div><label for="finDe">De</label><input id="finDe" type="date"></div>
+        <div><label for="finAte">Até</label><input id="finAte" type="date"></div>
+      </div>
+    </div>
+    <div class="finance-grid">
+      <article class="finance-card balance"><span>Saldo acumulado</span><strong id="finSaldo">R$ 0,00</strong><small>Vendas menos compras registradas</small></article>
+      <article class="finance-card income"><span>Entradas no período</span><strong id="finEntradas">R$ 0,00</strong><small id="finQtdEntradas">0 vendas</small></article>
+      <article class="finance-card expense"><span>Saídas no período</span><strong id="finSaidas">R$ 0,00</strong><small id="finQtdSaidas">0 compras</small></article>
+      <article class="finance-card period"><span>Saldo do período</span><strong id="finSaldoPeriodo">R$ 0,00</strong><small>Entradas menos saídas no período</small></article>
+    </div>
+    <div class="finance-columns">
+      <article class="finance-panel">
+        <h3>Resumo do período</h3>
+        <div id="finPeriodo" class="finance-note"></div>
+        <div class="finance-flow">
+          <div class="finance-flow-row"><div class="finance-flow-label"><span>Entradas</span><b id="finBarEntradas">R$ 0,00</b></div><div class="finance-flow-track"><div id="finFillEntradas" class="finance-flow-fill income"></div></div></div>
+          <div class="finance-flow-row"><div class="finance-flow-label"><span>Saídas</span><b id="finBarSaidas">R$ 0,00</b></div><div class="finance-flow-track"><div id="finFillSaidas" class="finance-flow-fill expense"></div></div></div>
+        </div>
+      </article>
+      <article class="finance-panel">
+        <h3>Movimentações financeiras recentes</h3>
+        <div id="finLista" class="finance-list"></div>
+      </article>
+    </div>
+  </section>
   <section id="v-prod">
     <div class="bar">
       <input class="grow" id="q" type="search" placeholder="Buscar por nome, código, marca, aplicação ou local">
@@ -617,7 +691,7 @@ async function init(){
   cats=await req(tx('meta').get('cats'));
   if(!cats){cats=[...DEF];await saveCats()}
   resp=(await req(tx('meta').get('resp')))||'';
-  const hoje=new Date();$('rde').value=ymd(new Date(hoje.getFullYear(),hoje.getMonth(),1));$('rate').value=ymd(hoje);
+  const hoje=new Date();$('rde').value=ymd(new Date(hoje.getFullYear(),hoje.getMonth(),1));$('rate').value=ymd(hoje);$('finDe').value=ymd(new Date(hoje.getFullYear(),hoje.getMonth(),1));$('finAte').value=ymd(hoje);
   go('prod');
   window.__appPronto=true;
 }
@@ -625,10 +699,49 @@ async function init(){
 /* navegação */
 function go(v){view=v;
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
-  for(const x of ['prod','mov','rep'])$('v-'+x).hidden=x!==v;
+  for(const x of ['fin','prod','mov','rep'])$('v-'+x).hidden=x!==v;
   $('catwrap').hidden=v!=='prod';renderAll()}
 document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
-function renderAll(){renderCats();if(view==='prod')renderProd();else if(view==='mov')renderMov();else renderRep()}
+function renderAll(){renderCats();if(view==='prod')renderProd();else if(view==='mov')renderMov();else if(view==='rep')renderRep();else renderFinanceiro()}
+
+function classificarFluxo(m){
+  if(m.tipo==='S'&&m.motivo==='Venda')return 'entrada';
+  if(m.tipo==='E'&&m.motivo==='Compra')return 'saida';
+  return null;
+}
+function valorFinanceiro(m){
+  if(m.valor==null||m.valor===''||!Number.isFinite(Number(m.valor))||!Number.isFinite(Number(m.qtd))||Number(m.qtd)<=0)return null;
+  return Math.round(Number(m.valor)*Number(m.qtd)*100);
+}
+function renderFinanceiro(){
+  const fluxo=movs.map(m=>({m,tipo:classificarFluxo(m),centavos:valorFinanceiro(m)}))
+    .filter(x=>x.tipo&&x.centavos!==null&&isFinite(new Date(x.m.data).getTime()));
+  const saldoTotal=fluxo.reduce((saldo,x)=>saldo+(x.tipo==='entrada'?x.centavos:-x.centavos),0);
+  const [inicio,fim]=rng($('finDe').value,$('finAte').value);
+  const periodoValido=inicio<=fim;
+  const periodo=fluxo.filter(x=>{const data=new Date(x.m.data).getTime();return periodoValido&&data>=inicio&&data<=fim});
+  const entradas=periodo.filter(x=>x.tipo==='entrada'),saidas=periodo.filter(x=>x.tipo==='saida');
+  const totalEntradas=entradas.reduce((s,x)=>s+x.centavos,0),totalSaidas=saidas.reduce((s,x)=>s+x.centavos,0);
+  $('finSaldo').textContent=money(saldoTotal/100);
+  $('finEntradas').textContent=money(totalEntradas/100);
+  $('finSaidas').textContent=money(totalSaidas/100);
+  $('finSaldoPeriodo').textContent=money((totalEntradas-totalSaidas)/100);
+  $('finQtdEntradas').textContent=`${entradas.length} venda(s)`;
+  $('finQtdSaidas').textContent=`${saidas.length} compra(s)`;
+  $('finPeriodo').textContent=!periodoValido
+    ?'A data inicial deve ser anterior ou igual à data final.'
+    :`${$('finDe').value||$('finAte').value?`De ${dd($('finDe').value)} a ${dd($('finAte').value)}`:'Todo o histórico'} · ${periodo.length} movimentação(ões) financeira(s).`;
+  $('finBarEntradas').textContent=money(totalEntradas/100);$('finBarSaidas').textContent=money(totalSaidas/100);
+  const max=Math.max(totalEntradas,totalSaidas,1);
+  $('finFillEntradas').style.width=`${totalEntradas/max*100}%`;$('finFillSaidas').style.width=`${totalSaidas/max*100}%`;
+  const recentes=[...periodo].sort((a,b)=>new Date(b.m.data)-new Date(a.m.data)).slice(0,8);
+  $('finLista').innerHTML=recentes.length?recentes.map(({m,tipo,centavos})=>`
+    <div class="finance-entry">
+      <div class="finance-entry-main"><div class="finance-entry-title">${esc(m.nome||'Peça')}</div><div class="finance-entry-meta">${tipo==='entrada'?'Venda':'Compra'} · ${dtf(m.data)} · ${m.qtd} un.</div></div>
+      <div class="finance-entry-value ${tipo}">${tipo==='entrada'?'+':'−'}${money(centavos/100)}</div>
+    </div>`).join(''):'<div class="finance-empty">Nenhuma venda ou compra registrada neste período.</div>';
+}
+for(const id of ['finDe','finAte'])$(id).oninput=renderFinanceiro;
 
 /* categorias (menu lateral) */
 function renderCats(){

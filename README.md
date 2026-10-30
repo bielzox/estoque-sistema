@@ -59,6 +59,12 @@ em cada dispositivo; não há sincronização automática. Use **Salvar backup**
 aplicativo para transferir ou guardar os dados e mantenha cópias em local seguro.
 Backups não devem ser publicados nem incluídos no repositório.
 
+A área **Financeiro** calcula o saldo acumulado e o fluxo do período a partir do
+histórico de movimentações: saídas com motivo **Venda** contam como dinheiro que
+entrou, e entradas com motivo **Compra** contam como dinheiro que saiu. O valor
+total usa o valor unitário multiplicado pela quantidade; ajustes e outros
+motivos não alteram o caixa.
+
 A senha de exclusão é armazenada como hash no dispositivo e não é incluída no
 backup. A exclusão de registros exige essa senha. Excluir uma movimentação apaga
 seu histórico e anexos, mas não recalcula o saldo do produto; excluir um produto
