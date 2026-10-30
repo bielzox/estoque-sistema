@@ -12,7 +12,7 @@ ipcMain.on('intacto:refocar', event => {
 });
 function criar() {
   const w = new BrowserWindow({
-    width: 1280, height: 800, title: 'Intacto Car',
+    width: 1280, height: 800, title: 'Estoque Intacto Car',
     icon: path.join(__dirname, 'icone.png'),   // ícone da janela
     autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, 'preload.js') }

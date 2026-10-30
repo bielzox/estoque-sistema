@@ -7,9 +7,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win --x64",
-    "start:admin": "electron admin-main.js",
-    "build:admin": "electron-builder --win --x64 --config electron-builder.admin.json"
+    "build": "electron-builder --win --x64"
   },
   "devDependencies": {
     "electron": "^33.4.11",
@@ -23,8 +21,6 @@
       "preload.js",
       "config.js",
       "sync.js",
-      "admin.html",
-      "admin.js",
       "vendor/*",
       "index.html",
       "manifest.webmanifest",

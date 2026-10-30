@@ -88,7 +88,7 @@ button.d{color:var(--bad)}
 dialog{border:0;border-radius:10px;padding:22px;width:min(520px,94vw);background:var(--card);color:var(--ink);max-height:92vh}
 dialog::backdrop{background:#000a}
 [hidden]{display:none!important}
-#auth{display:none;position:fixed;inset:0;z-index:2000;align-items:center;justify-content:center;padding:24px;overflow:auto;background:radial-gradient(ellipse at 18% 18%,#0578eb09 0,transparent 42%),radial-gradient(ellipse at 85% 85%,#0025f72c 0,transparent 38%),linear-gradient(135deg,#016fff49,#131414fd 72%)}
+#auth{display:none;position:fixed;inset:0;z-index:2000;align-items:center;justify-content:center;padding:24px;overflow:auto;background:linear-gradient(135deg,rgba(4,23,39,.48),rgba(7,15,20,.74)),var(--wallpaper,url("./icone.png"));background-position:center;background-size:cover;background-attachment:fixed}
 #auth::before{content:"";position:fixed;inset:0;pointer-events:none;background:var(--brand-logo,url("./icone.png")) right 6% bottom 6%/ min(34vw,320px) auto no-repeat;opacity:.2}
 html.ic-bloqueado #auth{display:flex}
 html.ic-bloqueado aside,html.ic-bloqueado main{visibility:hidden}
@@ -205,6 +205,14 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
 }
 @media print{:root{--bg:#fff;--card:#fff;--ink:#000;--mut:#333;--line:#999}aside,.bar,#toast{display:none!important}main{padding:0}body{display:block}.tw{border:0}.tbl th{background:#eee!important;print-color-adjust:exact;-webkit-print-color-adjust:exact}}
 </style>
+<script>
+try{
+  const savedWallpaper=localStorage.getItem('estoque-intacto-fundo');
+  if(savedWallpaper)document.documentElement.style.setProperty('--wallpaper',`url("${savedWallpaper}")`);
+  const savedLogo=localStorage.getItem('estoque-intacto-logo');
+  if(savedLogo)document.documentElement.style.setProperty('--brand-logo',`url("${savedLogo}")`);
+}catch(error){console.error('Não foi possível carregar a personalização da tela de entrada:',error)}
+</script>
 <script src="./config.js"></script>
 <script src="./sync.js"></script>
 </head>
@@ -212,6 +220,12 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
 <div id="auth">
   <div class="auth-card">
     <div class="auth-brand"><img class="auth-mark" id="authLogo" src="./icone.png" alt=""><div class="auth-logo">Intacto Car<span>Gestão de estoque</span></div></div>
+    <script>
+    try{
+      const savedLoginLogo=localStorage.getItem('estoque-intacto-logo');
+      if(savedLoginLogo)document.getElementById('authLogo').src=savedLoginLogo;
+    }catch(error){console.error('Não foi possível carregar a logo da tela de entrada:',error)}
+    </script>
     <div class="auth-p on" id="pCarregando"><p class="auth-wait">Verificando acesso…</p></div>
 
     <form class="auth-p" id="pLogin" novalidate>
@@ -275,7 +289,6 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
     <button class="cat" data-v="mov">Entradas e saídas</button>
     <button class="cat" data-v="rep">Relatórios</button>
   </div>
-  <a class="side-btn" id="adminOpen" href="./admin.html" target="_blank" rel="noopener">Painel administrativo</a>
   <div id="catwrap">
     <div class="sec">Categorias</div>
     <div id="cats"></div>
@@ -583,7 +596,7 @@ async function recarregar(){
   for(const id of [...selectedMovs])if(!movs.some(m=>m.id===id))selectedMovs.delete(id);
   renderAll();
 }
-/* Registro de auditoria compartilhado com o painel administrativo. */
+/* Registro local de ações para sincronização. */
 const logar=(titulo,texto,nivel,detalhes)=>{if(window.registrarLog)window.registrarLog(titulo,texto||'',nivel||'info',detalhes||{})};
 const listaLog=(arr,f,max=12)=>arr.slice(0,max).map(f).join('\n')+(arr.length>max?`\n… e mais ${arr.length-max}`:'');
 async function init(){

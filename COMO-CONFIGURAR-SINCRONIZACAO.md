@@ -1,4 +1,4 @@
-# Guia: login, recuperação de senha, painel administrativo e sincronização site ⇄ app
+# Guia: login, recuperação de senha e sincronização site ⇄ app
 
 Tudo isso **já está programado** no projeto (site e aplicativo usam o mesmo código).
 Falta só você criar o servidor gratuito (Supabase) e ligar. São ~20 minutos.
@@ -15,7 +15,6 @@ Falta só você criar o servidor gratuito (Supabase) e ligar. São ~20 minutos.
 | Recuperação | Depois de confirmar o código, o sistema pede a nova senha |
 | Minha conta | Trocar senha e sair |
 | Site ⇄ app | O que um fizer aparece no outro em instantes |
-| Auditoria | Ações importantes ficam no Supabase e podem ser consultadas no painel administrativo |
 
 ---
 
@@ -74,64 +73,7 @@ também é possível criar contas manualmente em **Authentication → Users → 
 > O template **Reset Password** precisa exibir `{{ .Token }}`; sem o código no e-mail,
 > não será possível concluir a recuperação pelo sistema.
 
-## Passo 6 — Painel administrativo e auditoria
-
-1. Se ainda existir uma integração antiga, revogue o webhook em **Discord → canal →
-   Editar canal → Integrações → Webhooks**. As mensagens antigas já publicadas no
-   Discord não podem ser apagadas pelo Supabase; exclua-as no próprio Discord se desejar.
-   Se a função antiga `discord-audit` tiver sido publicada no Supabase, remova-a e
-   apague o segredo `DISCORD_WEBHOOK_URL` nas configurações de Edge Functions.
-2. No Supabase, abra **SQL Editor → New query**, copie todo o arquivo
-   `supabase/setup.sql` e clique em **Run**. O script remove a configuração antiga
-   e cria a tabela de auditoria, o controle de acesso e a limpeza automática após 12 meses.
-   Se o painel já estiver configurado, execute novamente a versão atualizada do
-   `setup.sql` para instalar as operações protegidas de apagar e limpar registros.
-3. Crie primeiro a conta de usuário que será administradora em
-   **Authentication → Users** ou pela tela de cadastro do app. Depois autorize
-   essa conta no SQL Editor, substituindo o e-mail pelo da conta:
-
-   ```sql
-   insert into public.admin_allowlist (user_id)
-   select id from auth.users
-   where lower(email) = lower('admin@exemplo.com')
-   on conflict (user_id) do nothing;
-   ```
-
-   Se nenhuma linha for inserida, confira se a conta já existe e se o e-mail está correto.
-   Para autorizar outros administradores, repita o comando com o e-mail de cada conta.
-   Não é necessário compartilhar senhas ou chaves.
-   Para retirar o acesso de uma conta, execute:
-
-   ```sql
-   delete from public.admin_allowlist
-   where user_id in (select id from auth.users where lower(email) = lower('admin@exemplo.com'));
-   ```
-
-4. Abra **Painel administrativo** no menu lateral do app/site ou use o aplicativo
-   Windows separado do painel. Entre com o e-mail e a senha da conta autorizada.
-   O Supabase verifica a autorização no servidor; uma tela ou URL separada, sozinha,
-   não protege os dados. Não remova essa verificação nem publique credenciais
-   administrativas.
-5. No painel, **Apagar** remove um registro individual depois da confirmação. Para
-   apagar vários, marque os registros e use **Limpar selecionados**. Essa ação pede
-   uma senha própria, configurada no painel em **Configurar senha para limpar**.
-   A senha é protegida no Supabase e vinculada à conta administradora; ela é
-   independente da senha local de exclusão do estoque. O painel permite selecionar
-   até 500 registros por operação e registra na auditoria cada operação de exclusão.
-
-O painel apresenta registros de login/saída, cadastros, alterações e exclusões de
-produtos, movimentações, categorias, restauração/exportação de backup e configurações
-de aparência. Quando disponíveis, as alterações mostram valores anteriores e novos.
-É possível filtrar por período, usuário, origem e nível, além de exportar os resultados
-visíveis em CSV. Os registros são compartilhados entre site e aplicativo e permanecem
-no Supabase por até 12 meses.
-
-Senhas, tokens, imagens e anexos não são incluídos nos detalhes de auditoria. Para
-registrar outra ação concluída no app, use `logar(título, descrição, nível, {before, after})`;
-os níveis aceitos são `info`, `ok`, `aviso` e `perigo`. A fila local envia os eventos
-quando a sessão volta a ficar online.
-
-## Passo 7 — Ligar o sistema ao servidor
+## Passo 6 — Ligar o sistema ao servidor
 
 Abra o arquivo **`config.js`** e preencha com o que você anotou:
 
@@ -146,12 +88,9 @@ window.INTACTO_CONFIG = {
 - **Site:** envie todos os arquivos do projeto para o GitHub (o publicador já existe).
 - **Aplicativo (.exe):** rode `gerar-instalador.bat` e instale o novo
   `Estoque-Intacto-Car.exe`.
-- **App independente do painel (Windows):** rode `gerar-instalador-admin.bat`
-  (ou `npm run build:admin`) e instale
-  `instalador-admin/Intacto-Car-Painel-Admin.exe`.
 - **Celular:** abra o site e instale de novo / atualize o app instalado.
 
-## Passo 8 — Primeiro acesso
+## Passo 7 — Primeiro acesso
 
 1. Abra o sistema e entre com o e-mail e a senha criados no passo 4.
 2. No **primeiro login de cada aparelho**, os dados que já estão nele sobem ao servidor
@@ -166,8 +105,6 @@ window.INTACTO_CONFIG = {
 - [ ] Entrar no aplicativo (.exe) com a mesma conta.
 - [ ] Criar um produto no site → aparece no app sem recarregar.
 - [ ] Fazer uma saída no app → o estoque muda no site.
-- [ ] Ações do app aparecendo no painel administrativo.
-- [ ] Conta não autorizada sendo recusada pelo painel.
 - [ ] "Esqueci minha senha" por e-mail → código → nova senha.
 - [ ] Desligar a internet, lançar uma entrada, religar → sincroniza sozinho.
 
