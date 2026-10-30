@@ -1,4 +1,4 @@
-const CACHE_NAME = 'estoque-intacto-car-v16';
+const CACHE_NAME = 'estoque-intacto-car-v17';
 const APP_SHELL = [
   './',
   './index.html',

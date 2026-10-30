@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Intacto Car">
+<link rel="icon" type="image/png" href="./icone.png">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icone-192.png">
 <style>
@@ -18,7 +19,9 @@
 body{margin:0;font-family:"Segoe UI",Roboto,Arial,sans-serif;background-color:var(--bg);background-image:linear-gradient(var(--wallpaper-overlay),var(--wallpaper-overlay)),var(--wallpaper,url("./icone.png"));background-position:center;background-size:cover;background-attachment:fixed;color:var(--ink);display:flex;min-height:100vh;isolation:isolate}
 body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:var(--brand-logo,url("./icone.png")) right 8% bottom 8%/ min(42vw,420px) auto no-repeat;opacity:.12}
 aside{width:230px;background:var(--side);color:var(--sidei);padding:18px 10px;flex-shrink:0;position:sticky;z-index:1;top:0;height:100vh;overflow:auto}
-aside h1{font-size:17px;margin:0 8px 16px;font-weight:700}
+aside .brand{display:flex;align-items:center;gap:9px;margin:0 8px 16px}
+aside .brand img{width:38px;height:38px;flex:none;object-fit:contain;border-radius:8px}
+aside h1{font-size:17px;margin:0;font-weight:700}
 aside h1 span{display:block;font-size:12px;font-weight:400;color:#9aabb3;margin-top:2px}
 .sec{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:#9aabb3;margin:18px 10px 6px}
 .cat{display:flex;justify-content:space-between;width:100%;background:none;border:0;color:inherit;text-align:left;padding:9px 10px;border-radius:6px;cursor:pointer;font:inherit;font-size:14px}
@@ -179,7 +182,7 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
   .cat{width:auto;gap:8px}
   .side-btn{display:inline-block}
   #mCat{margin:6px 8px 0}
-  aside h1{margin-bottom:10px}
+  aside .brand{margin-bottom:10px}
   .sec{margin-top:12px}
   main{padding:12px}
   .bar{gap:8px}
@@ -207,6 +210,10 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
 </style>
 <script>
 try{
+  if(localStorage.getItem('estoque-intacto-logo-default')!=='icone.png'){
+    localStorage.removeItem('estoque-intacto-logo');
+    localStorage.setItem('estoque-intacto-logo-default','icone.png');
+  }
   const savedWallpaper=localStorage.getItem('estoque-intacto-fundo');
   if(savedWallpaper)document.documentElement.style.setProperty('--wallpaper',`url("${savedWallpaper}")`);
   const savedLogo=localStorage.getItem('estoque-intacto-logo');
@@ -282,7 +289,7 @@ try{
   </div>
 </div>
 <aside>
-  <h1>Estoque<span>Intacto Car</span></h1>
+  <div class="brand"><img src="./icone.png" alt="Logo Intacto Car"><h1>Estoque<span>Intacto Car</span></h1></div>
   <div class="sync" id="syncStatus" hidden><span class="dot"></span><span id="syncTxt">Conectando…</span></div>
   <div id="nav">
     <button class="cat on" data-v="prod">Produtos</button>
