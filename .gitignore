@@ -1,4 +1,5 @@
 /backup*.json
 /node_modules/
 /instalador/
+/instalador-admin/
 /backups/

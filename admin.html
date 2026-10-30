@@ -49,11 +49,23 @@ pre{max-width:520px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--mut)
 <body>
 <header>
   <div><h1>Auditoria • Intacto Car</h1><p>Painel administrativo separado do estoque</p></div>
-  <a href="./index.html">Voltar ao sistema</a>
+  <a id="backToApp" href="./index.html" target="_blank" rel="noopener">Abrir sistema</a>
 </header>
 <main>
   <div class="topline"><span id="connection">Verificando sessão e permissão…</span><button id="refresh" type="button" class="secondary">Atualizar</button></div>
   <p id="message" role="alert" hidden></p>
+  <section class="panel" id="loginPanel" aria-label="Entrar no painel administrativo" hidden>
+    <h2>Entrar no painel</h2>
+    <p>Use sua conta do sistema. O acesso administrativo é validado pelo Supabase.</p>
+    <form id="loginForm" class="filters">
+      <label>E-mail<input id="loginEmail" type="email" autocomplete="username" required></label>
+      <label>Senha<input id="loginPassword" type="password" autocomplete="current-password" required></label>
+      <div class="actions"><button id="loginButton" type="submit">Entrar</button></div>
+    </form>
+  </section>
+  <div class="actions" style="justify-content:flex-end;margin-bottom:12px">
+    <button id="logout" type="button" class="secondary" hidden>Sair da conta</button>
+  </div>
   <section class="panel filters" aria-label="Filtros de auditoria">
     <label>Buscar na ação<input id="searchTitle" type="search" placeholder="Ex.: produto editado"></label>
     <label>Usuário<input id="searchUser" type="search" placeholder="E-mail"></label>

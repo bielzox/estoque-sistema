@@ -105,10 +105,11 @@ também é possível criar contas manualmente em **Authentication → Users → 
    where user_id in (select id from auth.users where lower(email) = lower('admin@exemplo.com'));
    ```
 
-4. Entre no app/site com essa conta e abra **Painel administrativo** no menu lateral.
-   O painel fica em um arquivo separado (`admin.html`), usa a sessão existente e o
-   Supabase verifica a autorização no servidor. Uma URL separada, sozinha, não protege
-   os dados: não remova essa verificação nem publique credenciais administrativas.
+4. Abra **Painel administrativo** no menu lateral do app/site ou use o aplicativo
+   Windows separado do painel. Entre com o e-mail e a senha da conta autorizada.
+   O Supabase verifica a autorização no servidor; uma tela ou URL separada, sozinha,
+   não protege os dados. Não remova essa verificação nem publique credenciais
+   administrativas.
 
 O painel apresenta registros de login/saída, cadastros, alterações e exclusões de
 produtos, movimentações, categorias, restauração/exportação de backup e configurações
@@ -137,6 +138,8 @@ window.INTACTO_CONFIG = {
 - **Site:** envie todos os arquivos do projeto para o GitHub (o publicador já existe).
 - **Aplicativo (.exe):** rode `gerar-instalador.bat` e instale o novo
   `Estoque-Intacto-Car.exe`.
+- **App independente do painel (Windows):** rode `npm run build:admin` e instale
+  `instalador-admin/Intacto-Car-Painel-Admin.exe`.
 - **Celular:** abra o site e instale de novo / atualize o app instalado.
 
 ## Passo 8 — Primeiro acesso

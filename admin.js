@@ -22,6 +22,11 @@
     $('connection').textContent = text;
   }
 
+  function showLogin(visible) {
+    $('loginPanel').hidden = !visible;
+    $('logout').hidden = visible;
+  }
+
   function loadScript(src) {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
@@ -228,6 +233,7 @@
       if (!window.INTACTO_CONFIG?.supabaseUrl || !window.INTACTO_CONFIG?.supabaseAnonKey) {
         throw new Error('A conexão Supabase não está configurada neste app/site.');
       }
+      if (window.INTACTO_CONFIG.siteUrl) $('backToApp').href = window.INTACTO_CONFIG.siteUrl;
       await ensureSupabase();
       state.client = window.supabase.createClient(window.INTACTO_CONFIG.supabaseUrl, window.INTACTO_CONFIG.supabaseAnonKey, {
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
@@ -235,10 +241,12 @@
       const { data, error } = await state.client.auth.getSession();
       if (error) throw error;
       if (!data.session) {
-        setStatus('Entre no app/site com sua conta e abra o painel novamente.');
-        $('rows').innerHTML = '<tr><td class="empty" colspan="6">É necessário ter uma sessão autenticada no app/site.</td></tr>';
+        showLogin(true);
+        setStatus('Entre com sua conta para continuar.');
+        $('rows').innerHTML = '<tr><td class="empty" colspan="6">Faça login para consultar os registros.</td></tr>';
         return;
       }
+      showLogin(false);
       const { data: authorized, error: authorizationError } = await state.client.rpc('admin_is_authorized');
       if (authorizationError) {
         throw new Error(`Não foi possível validar a permissão. Execute supabase/setup.sql no Supabase. ${authorizationError.message}`);
@@ -272,6 +280,40 @@
     }
   }
 
+  $('loginForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const button = $('loginButton');
+    button.disabled = true;
+    showMessage('');
+    try {
+      if (!state.client) throw new Error('A conexão ainda está sendo preparada. Tente novamente.');
+      const { error } = await state.client.auth.signInWithPassword({
+        email: $('loginEmail').value.trim(),
+        password: $('loginPassword').value
+      });
+      if (error) throw error;
+      $('loginPassword').value = '';
+      window.location.reload();
+    } catch (error) {
+      console.error('Falha ao entrar no painel administrativo:', error);
+      showMessage(`Não foi possível entrar: ${error.message || error}`);
+    } finally {
+      button.disabled = false;
+    }
+  });
+  $('logout').addEventListener('click', async () => {
+    $('logout').disabled = true;
+    showMessage('');
+    try {
+      const { error } = await state.client.auth.signOut();
+      if (error) throw error;
+      window.location.reload();
+    } catch (error) {
+      console.error('Falha ao sair do painel administrativo:', error);
+      showMessage(`Não foi possível sair: ${error.message || error}`);
+      $('logout').disabled = false;
+    }
+  });
   $('refresh').addEventListener('click', loadPage);
   $('applyFilters').addEventListener('click', () => { state.page = 0; loadPage(); });
   $('clearFilters').addEventListener('click', clearFilters);
