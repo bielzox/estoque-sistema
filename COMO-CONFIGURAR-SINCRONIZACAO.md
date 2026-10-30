@@ -84,6 +84,8 @@ também é possível criar contas manualmente em **Authentication → Users → 
 2. No Supabase, abra **SQL Editor → New query**, copie todo o arquivo
    `supabase/setup.sql` e clique em **Run**. O script remove a configuração antiga
    e cria a tabela de auditoria, o controle de acesso e a limpeza automática após 12 meses.
+   Se o painel já estiver configurado, execute novamente a versão atualizada do
+   `setup.sql` para instalar as operações protegidas de apagar e limpar registros.
 3. Crie primeiro a conta de usuário que será administradora em
    **Authentication → Users** ou pela tela de cadastro do app. Depois autorize
    essa conta no SQL Editor, substituindo o e-mail pelo da conta:
@@ -110,6 +112,12 @@ também é possível criar contas manualmente em **Authentication → Users → 
    O Supabase verifica a autorização no servidor; uma tela ou URL separada, sozinha,
    não protege os dados. Não remova essa verificação nem publique credenciais
    administrativas.
+5. No painel, **Apagar** remove um registro individual depois da confirmação. Para
+   apagar vários, marque os registros e use **Limpar selecionados**. Essa ação pede
+   uma senha própria, configurada no painel em **Configurar senha para limpar**.
+   A senha é protegida no Supabase e vinculada à conta administradora; ela é
+   independente da senha local de exclusão do estoque. O painel permite selecionar
+   até 500 registros por operação e registra na auditoria cada operação de exclusão.
 
 O painel apresenta registros de login/saída, cadastros, alterações e exclusões de
 produtos, movimentações, categorias, restauração/exportação de backup e configurações
@@ -138,7 +146,8 @@ window.INTACTO_CONFIG = {
 - **Site:** envie todos os arquivos do projeto para o GitHub (o publicador já existe).
 - **Aplicativo (.exe):** rode `gerar-instalador.bat` e instale o novo
   `Estoque-Intacto-Car.exe`.
-- **App independente do painel (Windows):** rode `npm run build:admin` e instale
+- **App independente do painel (Windows):** rode `gerar-instalador-admin.bat`
+  (ou `npm run build:admin`) e instale
   `instalador-admin/Intacto-Car-Painel-Admin.exe`.
 - **Celular:** abra o site e instale de novo / atualize o app instalado.
 

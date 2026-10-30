@@ -180,6 +180,178 @@ end $$;
 revoke all on function public.registrar_log(text, text, text, text, jsonb) from public, anon;
 grant execute on function public.registrar_log(text, text, text, text, jsonb) to authenticated;
 
+create table if not exists public.admin_clear_passwords (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  salt text not null check (salt ~ '^[0-9a-f]{32}$'),
+  password_hash text not null check (password_hash ~ '^[0-9a-f]{64}$'),
+  updated_at timestamptz not null default now()
+);
+alter table public.admin_clear_passwords enable row level security;
+revoke all on public.admin_clear_passwords from anon, authenticated;
+
+create or replace function public.admin_get_clear_password_salt()
+returns text
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if auth.uid() is null or not public.admin_is_authorized() then
+    raise exception 'Acesso administrativo obrigatório.';
+  end if;
+  return (
+    select salt
+    from public.admin_clear_passwords
+    where user_id = auth.uid()
+  );
+end $$;
+revoke all on function public.admin_get_clear_password_salt() from public, anon;
+grant execute on function public.admin_get_clear_password_salt() to authenticated;
+
+create or replace function public.admin_set_clear_password(
+  p_salt text,
+  p_hash text,
+  p_current_hash text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_actor_id uuid := auth.uid();
+  v_saved_hash text;
+begin
+  if v_actor_id is null or not public.admin_is_authorized() then
+    raise exception 'Acesso administrativo obrigatório.';
+  end if;
+  if p_salt is null or p_salt !~ '^[0-9a-f]{32}$'
+     or p_hash is null or p_hash !~ '^[0-9a-f]{64}$' then
+    raise exception 'Formato inválido para a senha de limpeza.';
+  end if;
+
+  select password_hash
+    into v_saved_hash
+    from public.admin_clear_passwords
+    where user_id = v_actor_id
+    for update;
+
+  if found and (p_current_hash is null or p_current_hash <> v_saved_hash) then
+    raise exception 'Senha atual incorreta.';
+  end if;
+  if not found and p_current_hash is not null then
+    raise exception 'Não há uma senha de limpeza configurada para esta conta.';
+  end if;
+
+  insert into public.admin_clear_passwords (user_id, salt, password_hash, updated_at)
+  values (v_actor_id, p_salt, p_hash, now())
+  on conflict (user_id) do update
+    set salt = excluded.salt,
+        password_hash = excluded.password_hash,
+        updated_at = excluded.updated_at;
+end $$;
+revoke all on function public.admin_set_clear_password(text, text, text) from public, anon;
+grant execute on function public.admin_set_clear_password(text, text, text) to authenticated;
+
+create or replace function public.admin_delete_audit_log(p_id bigint)
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_actor_id uuid := auth.uid();
+  v_actor_email text;
+  v_deleted integer;
+begin
+  if v_actor_id is null or not public.admin_is_authorized() then
+    raise exception 'Acesso administrativo obrigatório para apagar registros.';
+  end if;
+  if p_id is null then
+    raise exception 'Selecione um registro válido para apagar.';
+  end if;
+
+  delete from public.audit_logs
+  where id = p_id;
+  get diagnostics v_deleted = row_count;
+  if v_deleted = 0 then
+    raise exception 'O registro não foi encontrado ou já foi apagado.';
+  end if;
+
+  select coalesce(email, 'usuário')
+    into v_actor_email
+    from auth.users
+    where id = v_actor_id;
+
+  insert into public.audit_logs (actor_id, actor_email, title, description, severity, source, details)
+  values (
+    v_actor_id,
+    coalesce(v_actor_email, 'usuário'),
+    'Registros de auditoria apagados',
+    'Um registro foi apagado pelo painel administrativo.',
+    'aviso',
+    'site',
+    jsonb_build_object('quantidade', v_deleted, 'modo', 'individual')
+  );
+  return v_deleted;
+end $$;
+revoke all on function public.admin_delete_audit_log(bigint) from public, anon;
+grant execute on function public.admin_delete_audit_log(bigint) to authenticated;
+
+create or replace function public.admin_clear_audit_logs(p_ids bigint[], p_password_hash text)
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_actor_id uuid := auth.uid();
+  v_actor_email text;
+  v_saved_hash text;
+  v_deleted integer;
+begin
+  if v_actor_id is null or not public.admin_is_authorized() then
+    raise exception 'Acesso administrativo obrigatório para limpar registros.';
+  end if;
+  if p_ids is null or cardinality(p_ids) = 0 or cardinality(p_ids) > 500 then
+    raise exception 'Selecione entre 1 e 500 registros para limpar.';
+  end if;
+  if p_password_hash is null or p_password_hash !~ '^[0-9a-f]{64}$' then
+    raise exception 'Senha de limpeza incorreta.';
+  end if;
+
+  select password_hash
+    into v_saved_hash
+    from public.admin_clear_passwords
+    where user_id = v_actor_id;
+  if v_saved_hash is null or p_password_hash <> v_saved_hash then
+    raise exception 'Senha de limpeza incorreta.';
+  end if;
+
+  delete from public.audit_logs
+  where id = any(p_ids);
+  get diagnostics v_deleted = row_count;
+
+  select coalesce(email, 'usuário')
+    into v_actor_email
+    from auth.users
+    where id = v_actor_id;
+
+  insert into public.audit_logs (actor_id, actor_email, title, description, severity, source, details)
+  values (
+    v_actor_id,
+    coalesce(v_actor_email, 'usuário'),
+    'Registros de auditoria limpos',
+    format('%s registro(s) selecionado(s) limpo(s) pelo painel administrativo.', v_deleted),
+    'aviso',
+    'site',
+    jsonb_build_object('quantidade', v_deleted, 'modo', 'selecionados')
+  );
+  return v_deleted;
+end $$;
+revoke all on function public.admin_clear_audit_logs(bigint[], text) from public, anon;
+grant execute on function public.admin_clear_audit_logs(bigint[], text) to authenticated;
+
 create extension if not exists pg_cron with schema pg_catalog;
 do $$
 declare

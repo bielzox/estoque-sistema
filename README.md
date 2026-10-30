@@ -16,8 +16,8 @@ e como aplicativo para Windows.
   para abrir somente o painel administrativo.
 - `COMO-CONFIGURAR-SINCRONIZACAO.md`: passo a passo de configuração, acesso admin
   e auditoria.
-- `gerar-instalador.bat` e `testar-sem-instalar.bat`: atalhos para gerar e
-  executar o aplicativo no Windows.
+- `gerar-instalador.bat`, `gerar-instalador-admin.bat` e
+  `testar-sem-instalar.bat`: atalhos para gerar e executar os aplicativos no Windows.
 - `backups/`: cópias locais dos dados. Não compartilhe nem publique esta pasta.
 - `instalador/`: saída gerada pelo Electron Builder; o instalador final fica
   aqui.
@@ -58,9 +58,11 @@ Para gerar o instalador do painel, sem substituir o instalador do estoque:
 npm run build:admin
 ```
 
+Ou dê duplo clique em `gerar-instalador-admin.bat`.
+
 O arquivo `Intacto-Car-Painel-Admin.exe` será criado em `instalador-admin/`.
-No primeiro uso, entre no painel com o e-mail e a senha da conta autorizada no
-Supabase. A sessão do painel é independente da sessão do aplicativo de estoque.
+No primeiro uso, entre no painel com a conta autorizada no Supabase. A sessão do
+painel é independente da sessão do aplicativo de estoque.
 
 ## Publicar e instalar no celular
 

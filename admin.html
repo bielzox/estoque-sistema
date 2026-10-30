@@ -23,6 +23,7 @@ input,select,button{font:inherit}
 input,select{width:100%;min-height:38px;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--card);color:var(--ink)}
 button{min-height:38px;border:0;border-radius:6px;padding:8px 14px;background:var(--accent);color:#fff;font-weight:700;cursor:pointer}
 button.secondary{border:1px solid var(--line);background:var(--card);color:var(--ink)}
+button.danger{background:var(--danger)}
 button:disabled{opacity:.5;cursor:default}
 .actions{display:flex;gap:8px;flex-wrap:wrap}
 .filters>.actions{grid-column:1/-1}
@@ -41,6 +42,12 @@ details summary{color:var(--accent);cursor:pointer;font-weight:600}
 pre{max-width:520px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--mut);font:12px Consolas,monospace}
 .pagination{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:14px}
 .empty{text-align:center;padding:32px;color:var(--mut)}
+dialog{width:min(440px,calc(100% - 32px));border:1px solid var(--line);border-radius:10px;padding:20px;background:var(--card);color:var(--ink)}
+dialog::backdrop{background:#0009}
+dialog h2{margin-top:0}
+dialog form{display:grid;gap:12px}
+dialog menu{display:flex;justify-content:flex-end;gap:8px;padding:0;margin:6px 0 0}
+dialog menu button{margin:0}
 @media(max-width:850px){main{padding:14px}.filters{grid-template-columns:repeat(2,minmax(0,1fr))}header{padding:15px}}
 </style>
 <script src="./config.js"></script>
@@ -48,7 +55,7 @@ pre{max-width:520px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--mut)
 </head>
 <body>
 <header>
-  <div><h1>Auditoria • Intacto Car</h1><p>Painel administrativo separado do estoque</p></div>
+  <div><h1>Intacto Car</h1><p>Painel administrativo separado do estoque</p></div>
   <a id="backToApp" href="./index.html" target="_blank" rel="noopener">Abrir sistema</a>
 </header>
 <main>
@@ -64,10 +71,11 @@ pre{max-width:520px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--mut)
     </form>
   </section>
   <div class="actions" style="justify-content:flex-end;margin-bottom:12px">
+    <button id="configureClearPassword" type="button" class="secondary" hidden>Configurar senha para limpar</button>
     <button id="logout" type="button" class="secondary" hidden>Sair da conta</button>
   </div>
   <section class="panel filters" aria-label="Filtros de auditoria">
-    <label>Buscar na ação<input id="searchTitle" type="search" placeholder="Ex.: produto editado"></label>
+    <label>Buscar na ação ou descrição<input id="searchTitle" type="search" placeholder="Ex.: produto editado"></label>
     <label>Usuário<input id="searchUser" type="search" placeholder="E-mail"></label>
     <label>Origem<select id="source"><option value="">Todas</option><option value="site">Site</option><option value="aplicativo">Aplicativo</option></select></label>
     <label>Nível<select id="severity"><option value="">Todos</option><option value="info">Informação</option><option value="ok">Sucesso</option><option value="aviso">Atenção</option><option value="perigo">Crítico</option></select></label>
@@ -79,12 +87,36 @@ pre{max-width:520px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--mut)
     <div class="summary" id="summary">Nenhum registro carregado.</div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Data e hora</th><th>Usuário</th><th>Ação</th><th>Nível</th><th>Origem</th><th>Alterações</th></tr></thead>
-        <tbody id="rows"><tr><td class="empty" colspan="6">Aguardando autorização.</td></tr></tbody>
+        <thead><tr><th><input id="selectPage" type="checkbox" aria-label="Selecionar registros desta página"></th><th>Data e hora</th><th>Usuário</th><th>Ação</th><th>Nível</th><th>Origem</th><th>Alterações</th><th>Ações</th></tr></thead>
+        <tbody id="rows"><tr><td class="empty" colspan="8">Aguardando autorização.</td></tr></tbody>
       </table>
+    </div>
+    <div class="actions" style="justify-content:flex-end;margin-top:12px">
+      <span id="selectionInfo" class="summary">0 selecionados</span>
+      <button id="deleteSelected" type="button" class="danger" disabled>Limpar selecionados</button>
     </div>
     <div class="pagination"><button id="previous" type="button" class="secondary">Anterior</button><span id="pageInfo">Página 0</span><button id="next" type="button" class="secondary">Próxima</button></div>
   </section>
 </main>
+<dialog id="clearPasswordSetup">
+  <form id="clearPasswordSetupForm">
+    <h2 id="clearPasswordSetupTitle">Configurar senha para limpar</h2>
+    <p id="clearPasswordSetupInfo">A senha será vinculada à sua conta administradora.</p>
+    <label id="clearPasswordCurrentWrap" hidden>Senha atual<input id="clearPasswordCurrent" type="password" autocomplete="current-password" maxlength="128"></label>
+    <label>Nova senha<input id="clearPasswordNew" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
+    <label>Confirmar senha<input id="clearPasswordConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
+    <p id="clearPasswordSetupError" role="alert" hidden></p>
+    <menu><button id="cancelPasswordSetup" type="button" class="secondary">Cancelar</button><button type="submit">Salvar senha</button></menu>
+  </form>
+</dialog>
+<dialog id="clearPasswordVerify">
+  <form id="clearPasswordVerifyForm">
+    <h2>Confirmar limpeza</h2>
+    <p id="clearPasswordVerifyInfo">Digite a senha configurada para sua conta administradora.</p>
+    <label>Senha de limpeza<input id="clearPasswordInput" type="password" autocomplete="current-password" maxlength="128" required></label>
+    <p id="clearPasswordVerifyError" role="alert" hidden></p>
+    <menu><button id="cancelPasswordVerify" type="button" class="secondary">Cancelar</button><button type="submit" class="danger">Confirmar</button></menu>
+  </form>
+</dialog>
 </body>
 </html>
