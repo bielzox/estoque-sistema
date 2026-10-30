@@ -21,6 +21,8 @@
       "preload.js",
       "config.js",
       "sync.js",
+      "admin.html",
+      "admin.js",
       "vendor/*",
       "index.html",
       "manifest.webmanifest",

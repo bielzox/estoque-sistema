@@ -275,6 +275,7 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
     <button class="cat" data-v="mov">Entradas e saídas</button>
     <button class="cat" data-v="rep">Relatórios</button>
   </div>
+  <a class="side-btn" id="adminOpen" href="./admin.html" target="_blank" rel="noopener">Painel administrativo</a>
   <div id="catwrap">
     <div class="sec">Categorias</div>
     <div id="cats"></div>
@@ -547,7 +548,7 @@ async function excluirRegistros({prodIds=[],movIds=[],confirmText,authText}){
     prods=prods.filter(p=>!deletedProducts.has(p.id));movs=movs.filter(m=>!deletedMovs.has(m.id));
     selectedProducts.clear();selectedMovs.clear();selectedReport.clear();renderAll();
     toast(`${prodIds.length+movIds.length} registro(s) excluído(s).`);
-    logar('🗑️ Registros excluídos',[delP.length?`**Produtos (${delP.length}):**\n${listaLog(delP,p=>`• ${p.nome} (cód. ${p.codigo||'—'}) — ${p.qtd} un.`)}`:'',delM.length?`**Movimentações (${delM.length}):**\n${listaLog(delM,m=>`• ${m.tipo==='E'?'Entrada':'Saída'} de ${m.qtd} × ${m.nome} — ${dtf(m.data)}`)}`:''].filter(Boolean).join('\n\n'),'perigo');
+    logar('🗑️ Registros excluídos',[delP.length?`**Produtos (${delP.length}):**\n${listaLog(delP,p=>`• ${p.nome} (cód. ${p.codigo||'—'}) — ${p.qtd} un.`)}`:'',delM.length?`**Movimentações (${delM.length}):**\n${listaLog(delM,m=>`• ${m.tipo==='E'?'Entrada':'Saída'} de ${m.qtd} × ${m.nome} — ${dtf(m.data)}`)}`:''].filter(Boolean).join('\n\n'),'perigo',{before:{produtos:delP,movimentacoes:delM},after:null});
   }catch(e){avisar('Não foi possível excluir os registros: '+e.message,{tipo:'erro'})}
 }
 
@@ -582,8 +583,8 @@ async function recarregar(){
   for(const id of [...selectedMovs])if(!movs.some(m=>m.id===id))selectedMovs.delete(id);
   renderAll();
 }
-/* registro de atividade enviado ao Discord (só funciona com a conexão configurada em config.js) */
-const logar=(titulo,texto,nivel)=>{try{if(window.registrarLog)window.registrarLog(titulo,texto||'',nivel||'info')}catch(_){}};
+/* Registro de auditoria compartilhado com o painel administrativo. */
+const logar=(titulo,texto,nivel,detalhes)=>{if(window.registrarLog)window.registrarLog(titulo,texto||'',nivel||'info',detalhes||{})};
 const listaLog=(arr,f,max=12)=>arr.slice(0,max).map(f).join('\n')+(arr.length>max?`\n… e mais ${arr.length-max}`:'');
 async function init(){
   try{db=await abrir()}catch(e){avisar('Não foi possível abrir o banco de dados do navegador.',{tipo:'erro'});return}
@@ -709,11 +710,13 @@ $('sv').onclick=async()=>{
   const campos={nome,codigo,cat:$('fk').value,marca:$('fma').value.trim(),local:$('fl').value.trim(),aplic:$('fa').value.trim(),desc:$('fd').value.trim(),foto,custo,venda,min};
   let qiLog=null;
   try{
-    if(editId){const p=await editarProduto(editId,campos);prods=prods.map(x=>x.id===editId?p:x)}
+    const produtoAnterior=editId?prods.find(x=>x.id===editId)||null:null;
+    let produtoSalvo;
+    if(editId){produtoSalvo=await editarProduto(editId,campos);prods=prods.map(x=>x.id===editId?produtoSalvo:x)}
     else{const qs=$('fqi').value.trim()||'0';if(!/^\d+$/.test(qs)){avisar('Quantidade inicial inválida.');return}
-      const r=await criarProduto(fix({id:uid(),...campos}),parseInt(qs));prods.push(r.p);if(r.m)movs.push(r.m);qiLog=parseInt(qs)}
+      const r=await criarProduto(fix({id:uid(),...campos}),parseInt(qs));produtoSalvo=r.p;prods.push(r.p);if(r.m)movs.push(r.m);qiLog=parseInt(qs)}
     $('dlg').close();renderAll();toast('Produto salvo');
-    logar(editId?'✏️ Produto editado':'🆕 Produto cadastrado',`**${nome}** (cód. ${codigo})\nCategoria: ${campos.cat||'—'} • Venda: ${money(venda)} • Custo: ${money(custo)}${qiLog!==null?`\nEstoque inicial: ${qiLog} un.`:''}`,'info')
+    logar(editId?'✏️ Produto editado':'🆕 Produto cadastrado',`**${nome}** (cód. ${codigo})\nCategoria: ${campos.cat||'—'} • Venda: ${money(venda)} • Custo: ${money(custo)}${qiLog!==null?`\nEstoque inicial: ${qiLog} un.`:''}`,'info',{before:produtoAnterior,after:{...produtoSalvo,midiaAlterada:!!produtoSalvo.foto!==!!produtoAnterior?.foto}})
   }catch(e){avisar('Erro ao salvar: '+e.message,{tipo:'erro'})}
 };
 
@@ -768,7 +771,7 @@ $('mok').onclick=async()=>{
     prods=prods.map(x=>x.id===p.id?r.p:x);movs.push(r.m);
     if(rs!==resp){resp=rs;try{await req(tx('meta','readwrite').put(resp,'resp'))}catch(_){}}
     $('dmov').close();renderAll();toast(`${mv.t==='E'?'Entrada':'Saída'} registrada. Estoque: ${r.p.qtd}`);
-    logar(mv.t==='E'?'📥 Entrada de estoque':'📤 Saída de estoque',`**${p.nome}** (cód. ${p.codigo||'—'})\nQuantidade: ${q} un. • Motivo: ${$('mmo').value}\nValor unitário: ${money(valor)} • Estoque agora: ${r.p.qtd} un.${rs?`\nResponsável: ${rs}`:''}${attachments.length?`\nAnexos: ${attachments.length}`:''}`,mv.t==='E'?'ok':'aviso')
+    logar(mv.t==='E'?'📥 Entrada de estoque':'📤 Saída de estoque',`**${p.nome}** (cód. ${p.codigo||'—'})\nQuantidade: ${q} un. • Motivo: ${$('mmo').value}\nValor unitário: ${money(valor)} • Estoque agora: ${r.p.qtd} un.${rs?`\nResponsável: ${rs}`:''}${attachments.length?`\nAnexos: ${attachments.length}`:''}`,mv.t==='E'?'ok':'aviso',{before:{estoque:p.qtd},after:{estoque:r.p.qtd,movimentacao:r.m}})
   }catch(e){avisar(e.message,{tipo:'erro'})}
 };
 function renderMov(){
@@ -924,7 +927,7 @@ $('passSave').onclick=async()=>{
     const salt=crypto.getRandomValues(new Uint8Array(16)),hash=await derivePassword(newPassword,salt);
     await req(tx('meta','readwrite').put({version:1,salt:bytesToHex(salt),hash:bytesToHex(hash)},PASSWORD_KEY));
     $('dpass').close();toast(previous?'Senha de exclusão alterada.':'Senha de exclusão configurada.');
-    logar(previous?'🔑 Senha de exclusão alterada':'🔑 Senha de exclusão configurada','','aviso');
+    logar(previous?'🔑 Senha de exclusão alterada':'🔑 Senha de exclusão configurada','','aviso',{before:{configurada:previous},after:{configurada:true}});
   }catch(e){$('passInfo').textContent='Não foi possível salvar a senha: '+e.message;button.disabled=false}
 };
 $('rpr').onclick=()=>window.print();
@@ -964,7 +967,7 @@ async function salvarNomeCategoria(){
     affected.forEach(p=>{p.cat=name});
     cats=updatedCats;if(cur===old)cur=name;
     renameCategoryIndex=null;$('drename').close();renderAll();listCats();$('dcat').showModal();
-    logar('🏷️ Categoria renomeada',`**${old}** → **${name}**${affected.length?`\n${affected.length} produto(s) atualizado(s)`:''}`);
+    logar('🏷️ Categoria renomeada',`**${old}** → **${name}**${affected.length?`\n${affected.length} produto(s) atualizado(s)`:''}`,'info',{before:{categoria:old,produtos:affected},after:{categoria:name,produtos:affected.map(p=>({...p,cat:name}))}});
   }catch(error){
     $('renameInfo').textContent='Não foi possível salvar o novo nome: '+error.message;
     button.disabled=false;
@@ -978,18 +981,18 @@ $('renameInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDef
 $('drename').addEventListener('close',()=>{if(renameCategoryIndex!==null){renameCategoryIndex=null;listCats();if(!$('dcat').open)$('dcat').showModal()}});
 $('ac').onclick=async()=>{const n=$('nc').value.trim();if(!n)return;
   if(cats.some(c=>c.toLowerCase()===n.toLowerCase())){avisar('Essa categoria já existe.');return}
-  cats.push(n);await saveCats();$('nc').value='';listCats();renderAll();logar('🏷️ Categoria criada',`**${n}**`)};
-$('az').onclick=async()=>{cats.sort((a,b)=>a.localeCompare(b,'pt-BR'));await saveCats();listCats();renderAll()};
+  const anteriores=[...cats];cats.push(n);await saveCats();$('nc').value='';listCats();renderAll();logar('🏷️ Categoria criada',`**${n}**`,'info',{before:{categorias:anteriores},after:{categorias:[...cats]} })};
+$('az').onclick=async()=>{const anteriores=[...cats];cats.sort((a,b)=>a.localeCompare(b,'pt-BR'));await saveCats();listCats();renderAll();logar('↕️ Categorias ordenadas alfabeticamente','','info',{before:{categorias:anteriores},after:{categorias:[...cats]}})};
 $('lc').onclick=async e=>{
   const t=e.target.closest('button');if(!t||t.disabled)return;
-  const mvc=async(i,j)=>{[cats[i],cats[j]]=[cats[j],cats[i]];await saveCats();listCats();renderAll()};
+  const mvc=async(i,j)=>{const anteriores=[...cats];[cats[i],cats[j]]=[cats[j],cats[i]];await saveCats();listCats();renderAll();logar('↕️ Ordem das categorias alterada','','info',{before:{categorias:anteriores},after:{categorias:[...cats]}})};
   if(t.dataset.u!==undefined)return mvc(+t.dataset.u,+t.dataset.u-1);
   if(t.dataset.n!==undefined)return mvc(+t.dataset.n,+t.dataset.n+1);
   if(t.dataset.r!==undefined)return abrirRenomearCategoria(+t.dataset.r);
   if(t.dataset.d!==undefined){const i=+t.dataset.d,c=cats[i],n=prods.filter(p=>p.cat===c).length;
     if(n){avisar(`Não é possível excluir: ${n} produto(s) usam "${c}". Mova ou exclua esses produtos antes.`);return}
     if(!await confirmar(`Excluir a categoria "${c}"?`,{tipo:'perigo',ok:'Excluir'}))return;
-    cats.splice(i,1);if(cur===c)cur='__all';await saveCats();listCats();renderAll();logar('🏷️ Categoria excluída',`**${c}**`,'aviso')}
+    const anteriores=[...cats];cats.splice(i,1);if(cur===c)cur='__all';await saveCats();listCats();renderAll();logar('🏷️ Categoria excluída',`**${c}**`,'aviso',{before:{categorias:anteriores},after:{categorias:[...cats]}})}
 };
 
 /* backup */
@@ -1008,6 +1011,7 @@ $('logofile').onchange=()=>{
       localStorage.setItem('estoque-intacto-logo',data);
       $('authLogo').src=data;
       document.documentElement.style.setProperty('--brand-logo',`url("${data}")`);
+      logar('🖼️ Logo do sistema alterada','A imagem da marca foi atualizada neste dispositivo.','info');
     }catch(e){avisar('Não foi possível salvar a logo neste dispositivo. Escolha uma imagem menor ou libere espaço no navegador.',{tipo:'erro'})}
     finally{URL.revokeObjectURL(url);$('logofile').value=''}
   };
@@ -1019,6 +1023,7 @@ $('logoreset').onclick=()=>{
     localStorage.removeItem('estoque-intacto-logo');
     $('authLogo').src='./icone.png';
     document.documentElement.style.removeProperty('--brand-logo');
+    logar('🖼️ Logo original restaurada','A imagem padrão da marca foi restaurada neste dispositivo.','info');
   }catch(e){avisar('Não foi possível restaurar a logo original.',{tipo:'erro'})}
 };
 $('bgpick').onclick=()=>$('bgfile').click();
@@ -1035,6 +1040,7 @@ $('bgfile').onchange=()=>{
       const data=canvas.toDataURL('image/jpeg',.78);
       localStorage.setItem('estoque-intacto-fundo',data);
       document.documentElement.style.setProperty('--wallpaper',`url("${data}")`);
+      logar('🌄 Imagem de fundo alterada','A imagem de fundo foi atualizada neste dispositivo.','info');
     }catch(e){avisar('Não foi possível salvar a imagem de fundo neste dispositivo. Escolha uma imagem menor ou libere espaço no navegador.',{tipo:'erro'})}
     finally{URL.revokeObjectURL(url);$('bgfile').value=''}
   };
@@ -1042,13 +1048,15 @@ $('bgfile').onchange=()=>{
   img.src=url;
 };
 $('bgreset').onclick=()=>{
-  try{localStorage.removeItem('estoque-intacto-fundo');document.documentElement.style.removeProperty('--wallpaper')}
+  try{localStorage.removeItem('estoque-intacto-fundo');document.documentElement.style.removeProperty('--wallpaper');logar('🌄 Fundo original restaurado','A imagem de fundo padrão foi restaurada neste dispositivo.','info')}
   catch(e){avisar('Não foi possível restaurar a imagem de fundo.',{tipo:'erro'})}
 };
 $('bkp').onclick=()=>{
   const blob=new Blob([JSON.stringify({versao:2,cats,prods,movs})],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download='backup-estoque-'+ymd(new Date())+'.json';a.click()};
+  a.download='backup-estoque-'+ymd(new Date())+'.json';a.click();
+  logar('💾 Backup exportado',`Backup baixado: ${prods.length} produto(s), ${movs.length} movimentação(ões).`,'info',{before:null,after:{produtos:prods.length,movimentacoes:movs.length,categorias:[...cats]}});
+};
 $('rst').onclick=()=>$('rf').click();
 $('rf').onchange=async()=>{
   const f=$('rf').files[0];if(!f)return;
@@ -1058,9 +1066,10 @@ $('rf').onchange=async()=>{
     const validAttachments=m=>m.attachments===undefined||(Array.isArray(m.attachments)&&m.attachments.every(a=>a&&typeof a.name==='string'&&typeof a.data==='string'&&(a.type===undefined||typeof a.type==='string')));
     if(!d.prods.every(p=>p&&p.id&&typeof p.nome==='string'&&Number.isInteger(p.qtd))||!mm.every(m=>m&&m.id&&m.prodId&&(m.tipo==='E'||m.tipo==='S')&&Number.isInteger(m.qtd)&&m.data&&validAttachments(m)))throw new Error('x');
     if(!await confirmar(`Isso substitui TODOS os dados atuais pelos do backup (${d.prods.length} produto(s), ${mm.length} movimentação(ões)).`,{tipo:'perigo',titulo:'Restaurar backup?',ok:'Restaurar'}))return;
+    const beforeBackup={produtos:prods.length,movimentacoes:movs.length,categorias:[...cats]};
     const np=d.prods.map(fix),nc=[...d.cats];np.forEach(p=>{if(p.cat&&!nc.includes(p.cat))nc.push(p.cat)});
     await trans((ps,ms,me)=>{ps.clear();ms.clear();np.forEach(p=>ps.put(p));mm.forEach(m=>ms.put(m));me.put(nc,'cats')});
-    prods=np;movs=mm;cats=nc;cur='__all';go('prod');avisar('Backup restaurado.',{tipo:'ok'});logar('♻️ Backup restaurado',`Os dados foram substituídos pelo backup: ${np.length} produto(s) e ${mm.length} movimentação(ões).`,'perigo')
+    prods=np;movs=mm;cats=nc;cur='__all';go('prod');avisar('Backup restaurado.',{tipo:'ok'});logar('♻️ Backup restaurado',`Os dados foram substituídos pelo backup: ${np.length} produto(s) e ${mm.length} movimentação(ões).`,'perigo',{before:beforeBackup,after:{produtos:np.length,movimentacoes:mm.length,categorias:nc}})
   }catch(e){avisar('Arquivo de backup inválido.',{tipo:'erro'})}
   $('rf').value=''};
 

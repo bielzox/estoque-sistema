@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1f2a30">
+<title>Painel administrativo — Intacto Car</title>
+<style>
+:root{color-scheme:light dark;--bg:#eceff1;--card:#fff;--ink:#1f2a30;--mut:#5f6f78;--line:#cfd6da;--accent:#0564f2;--danger:#b3261e}
+@media(prefers-color-scheme:dark){:root{--bg:#161d21;--card:#202a30;--ink:#e8edf0;--mut:#9aabb3;--line:#33424a;--accent:#6da8ff;--danger:#ff8a80}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px "Segoe UI",Roboto,Arial,sans-serif}
+header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 24px;background:#1f2a30;color:#e8edf0}
+header h1{margin:0;font-size:20px}header p{margin:4px 0 0;color:#b8c5cb;font-size:13px}
+a{color:inherit}
+main{max-width:1400px;margin:0 auto;padding:24px}
+.topline{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+#connection{color:var(--mut);overflow-wrap:anywhere}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px}
+.filters{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:10px;align-items:end}
+label{display:grid;gap:5px;color:var(--mut);font-size:12px;font-weight:600}
+input,select,button{font:inherit}
+input,select{width:100%;min-height:38px;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--card);color:var(--ink)}
+button{min-height:38px;border:0;border-radius:6px;padding:8px 14px;background:var(--accent);color:#fff;font-weight:700;cursor:pointer}
+button.secondary{border:1px solid var(--line);background:var(--card);color:var(--ink)}
+button:disabled{opacity:.5;cursor:default}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.filters>.actions{grid-column:1/-1}
+.summary{display:flex;gap:10px;flex-wrap:wrap;color:var(--mut);font-size:13px}
+.summary strong{color:var(--ink)}
+#message{margin:0 0 14px;padding:11px 13px;border-radius:7px;background:#b3261e14;color:var(--danger);white-space:pre-wrap}
+#message[hidden]{display:none}
+.table-wrap{overflow:auto}
+table{width:100%;border-collapse:collapse;min-width:900px}
+th,td{text-align:left;vertical-align:top;padding:10px;border-bottom:1px solid var(--line)}
+th{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+td small{display:block;color:var(--mut);margin-top:4px}
+.badge{display:inline-block;padding:3px 8px;border-radius:999px;background:#0564f21a;color:var(--accent);font-weight:700}
+.badge.ok{background:#2e7d4f22;color:#2e7d4f}.badge.aviso{background:#b26a0022;color:#b26a00}.badge.perigo{background:#b3261e22;color:var(--danger)}
+details summary{color:var(--accent);cursor:pointer;font-weight:600}
+pre{max-width:520px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--mut);font:12px Consolas,monospace}
+.pagination{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:14px}
+.empty{text-align:center;padding:32px;color:var(--mut)}
+@media(max-width:850px){main{padding:14px}.filters{grid-template-columns:repeat(2,minmax(0,1fr))}header{padding:15px}}
+</style>
+<script src="./config.js"></script>
+<script src="./admin.js" defer></script>
+</head>
+<body>
+<header>
+  <div><h1>Auditoria • Intacto Car</h1><p>Painel administrativo separado do estoque</p></div>
+  <a href="./index.html">Voltar ao sistema</a>
+</header>
+<main>
+  <div class="topline"><span id="connection">Verificando sessão e permissão…</span><button id="refresh" type="button" class="secondary">Atualizar</button></div>
+  <p id="message" role="alert" hidden></p>
+  <section class="panel filters" aria-label="Filtros de auditoria">
+    <label>Buscar na ação<input id="searchTitle" type="search" placeholder="Ex.: produto editado"></label>
+    <label>Usuário<input id="searchUser" type="search" placeholder="E-mail"></label>
+    <label>Origem<select id="source"><option value="">Todas</option><option value="site">Site</option><option value="aplicativo">Aplicativo</option></select></label>
+    <label>Nível<select id="severity"><option value="">Todos</option><option value="info">Informação</option><option value="ok">Sucesso</option><option value="aviso">Atenção</option><option value="perigo">Crítico</option></select></label>
+    <label>De<input id="fromDate" type="date"></label>
+    <label>Até<input id="toDate" type="date"></label>
+    <div class="actions"><button id="applyFilters" type="button">Filtrar</button><button id="clearFilters" type="button" class="secondary">Limpar</button><button id="export" type="button" class="secondary">Exportar CSV</button></div>
+  </section>
+  <section class="panel">
+    <div class="summary" id="summary">Nenhum registro carregado.</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Data e hora</th><th>Usuário</th><th>Ação</th><th>Nível</th><th>Origem</th><th>Alterações</th></tr></thead>
+        <tbody id="rows"><tr><td class="empty" colspan="6">Aguardando autorização.</td></tr></tbody>
+      </table>
+    </div>
+    <div class="pagination"><button id="previous" type="button" class="secondary">Anterior</button><span id="pageInfo">Página 0</span><button id="next" type="button" class="secondary">Próxima</button></div>
+  </section>
+</main>
+</body>
+</html>

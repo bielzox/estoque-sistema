@@ -1,4 +1,4 @@
-# Guia: login, recuperação de senha por e-mail, logs no Discord e sincronização site ⇄ app
+# Guia: login, recuperação de senha, painel administrativo e sincronização site ⇄ app
 
 Tudo isso **já está programado** no projeto (site e aplicativo usam o mesmo código).
 Falta só você criar o servidor gratuito (Supabase) e ligar. São ~20 minutos.
@@ -15,7 +15,7 @@ Falta só você criar o servidor gratuito (Supabase) e ligar. São ~20 minutos.
 | Recuperação | Depois de confirmar o código, o sistema pede a nova senha |
 | Minha conta | Trocar senha e sair |
 | Site ⇄ app | O que um fizer aparece no outro em instantes |
-| Discord | Cada ação importante vira uma mensagem no canal que você escolher |
+| Auditoria | Ações importantes ficam no Supabase e podem ser consultadas no painel administrativo |
 
 ---
 
@@ -74,29 +74,53 @@ também é possível criar contas manualmente em **Authentication → Users → 
 > O template **Reset Password** precisa exibir `{{ .Token }}`; sem o código no e-mail,
 > não será possível concluir a recuperação pelo sistema.
 
-## Passo 6 — Logs no Discord
+## Passo 6 — Painel administrativo e auditoria
 
-1. No Discord, abra o canal que vai receber os logs → **Editar canal (engrenagem) →
-   Integrações → Webhooks → Novo webhook**.
-2. Dê um nome (ex.: `Estoque Intacto Car`) e clique em **Copiar URL do webhook**.
-3. Se a URL do webhook já foi compartilhada em mensagens, arquivos ou outros locais,
-   revogue-a no Discord e gere uma nova antes de continuar. Trate essa URL como uma
-   senha: não a grave em `config.js`, JavaScript do navegador ou no repositório.
-4. No Supabase: **SQL Editor → New query**, cole o comando abaixo substituindo o
-   texto de exemplo pela URL atual e clique em **Run**:
+1. Se ainda existir uma integração antiga, revogue o webhook em **Discord → canal →
+   Editar canal → Integrações → Webhooks**. As mensagens antigas já publicadas no
+   Discord não podem ser apagadas pelo Supabase; exclua-as no próprio Discord se desejar.
+   Se a função antiga `discord-audit` tiver sido publicada no Supabase, remova-a e
+   apague o segredo `DISCORD_WEBHOOK_URL` nas configurações de Edge Functions.
+2. No Supabase, abra **SQL Editor → New query**, copie todo o arquivo
+   `supabase/setup.sql` e clique em **Run**. O script remove a configuração antiga
+   e cria a tabela de auditoria, o controle de acesso e a limpeza automática após 12 meses.
+3. Crie primeiro a conta de usuário que será administradora em
+   **Authentication → Users** ou pela tela de cadastro do app. Depois autorize
+   essa conta no SQL Editor, substituindo o e-mail pelo da conta:
 
-```sql
-insert into public.config_segredos (chave, valor)
-values ('discord_webhook', 'COLE_AQUI_A_URL_DO_WEBHOOK')
-on conflict (chave) do update set valor = excluded.valor;
-```
+   ```sql
+   insert into public.admin_allowlist (user_id)
+   select id from auth.users
+   where lower(email) = lower('admin@exemplo.com')
+   on conflict (user_id) do nothing;
+   ```
 
-A URL fica guardada só no servidor — não vai para o site nem para o aplicativo.
+   Se nenhuma linha for inserida, confira se a conta já existe e se o e-mail está correto.
+   Para autorizar outros administradores, repita o comando com o e-mail de cada conta.
+   Não é necessário compartilhar senhas ou chaves.
+   Para retirar o acesso de uma conta, execute:
 
-**O que aparece no canal:** novo cadastro, login e saída, produto criado/editado, entradas e saídas,
-exclusões (com a lista do que foi apagado), categorias, senha de exclusão, backup
-restaurado, senha redefinida. Cada mensagem mostra o e-mail de quem fez e se foi pelo
-**site** ou pelo **aplicativo**.
+   ```sql
+   delete from public.admin_allowlist
+   where user_id in (select id from auth.users where lower(email) = lower('admin@exemplo.com'));
+   ```
+
+4. Entre no app/site com essa conta e abra **Painel administrativo** no menu lateral.
+   O painel fica em um arquivo separado (`admin.html`), usa a sessão existente e o
+   Supabase verifica a autorização no servidor. Uma URL separada, sozinha, não protege
+   os dados: não remova essa verificação nem publique credenciais administrativas.
+
+O painel apresenta registros de login/saída, cadastros, alterações e exclusões de
+produtos, movimentações, categorias, restauração/exportação de backup e configurações
+de aparência. Quando disponíveis, as alterações mostram valores anteriores e novos.
+É possível filtrar por período, usuário, origem e nível, além de exportar os resultados
+visíveis em CSV. Os registros são compartilhados entre site e aplicativo e permanecem
+no Supabase por até 12 meses.
+
+Senhas, tokens, imagens e anexos não são incluídos nos detalhes de auditoria. Para
+registrar outra ação concluída no app, use `logar(título, descrição, nível, {before, after})`;
+os níveis aceitos são `info`, `ok`, `aviso` e `perigo`. A fila local envia os eventos
+quando a sessão volta a ficar online.
 
 ## Passo 7 — Ligar o sistema ao servidor
 
@@ -130,7 +154,8 @@ window.INTACTO_CONFIG = {
 - [ ] Entrar no aplicativo (.exe) com a mesma conta.
 - [ ] Criar um produto no site → aparece no app sem recarregar.
 - [ ] Fazer uma saída no app → o estoque muda no site.
-- [ ] Mensagens chegando no canal do Discord.
+- [ ] Ações do app aparecendo no painel administrativo.
+- [ ] Conta não autorizada sendo recusada pelo painel.
 - [ ] "Esqueci minha senha" por e-mail → código → nova senha.
 - [ ] Desligar a internet, lançar uma entrada, religar → sincroniza sozinho.
 
@@ -140,7 +165,8 @@ window.INTACTO_CONFIG = {
 |---|---|
 | "E-mail ou senha incorretos" | Confira se o usuário foi criado no passo 4 com **Auto Confirm User** |
 | Não chega e-mail de recuperação | Veja o spam; confira o template Reset Password e configure SMTP próprio (passo 5) |
-| Nada chega no Discord | Rode o comando do passo 7; confira se a URL do webhook está certa |
+| Painel mostra acesso negado | Autorize a conta pelo SQL do passo 6 e entre novamente no app |
+| Auditoria não atualiza | Confira se aparece **Conectado — em tempo real**, rode `supabase/setup.sql` e reabra o app |
 | Fica em "Falha ao sincronizar" | Confira URL e chave no `config.js` e se o `setup.sql` rodou sem erro |
 | Projeto "pausado" no Supabase | Projetos grátis pausam após ~7 dias sem uso: reative no painel |
 

@@ -9,8 +9,11 @@ e como aplicativo para Windows.
 - `main.js`, `package.json` e `package-lock.json`: aplicativo Windows e suas
   dependências.
 - `config.js`, `sync.js` e `supabase/setup.sql`: login, recuperação de senha por
-  código no e-mail, sincronização em tempo real e logs no Discord. Passo a passo em
-  `COMO-CONFIGURAR-SINCRONIZACAO.md`.
+  código no e-mail, sincronização em tempo real e auditoria no painel administrativo.
+- `admin.html` e `admin.js`: painel separado para consultar e exportar auditoria,
+  protegido pela lista de administradores no Supabase.
+- `COMO-CONFIGURAR-SINCRONIZACAO.md`: passo a passo de configuração, acesso admin
+  e auditoria.
 - `gerar-instalador.bat` e `testar-sem-instalar.bat`: atalhos para gerar e
   executar o aplicativo no Windows.
 - `backups/`: cópias locais dos dados. Não compartilhe nem publique esta pasta.

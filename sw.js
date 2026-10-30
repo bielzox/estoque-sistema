@@ -1,10 +1,12 @@
-const CACHE_NAME = 'estoque-intacto-car-v13';
+const CACHE_NAME = 'estoque-intacto-car-v15';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
   './config.js',
   './sync.js',
+  './admin.html',
+  './admin.js',
   './icone.png',
   './icone-192.png',
   './icone-512.png'

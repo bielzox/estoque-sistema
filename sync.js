@@ -1,5 +1,4 @@
-/* Intacto Car — login, sincronização em tempo real entre site e aplicativo (Supabase)
-   e envio de logs para um canal do Discord.
+/* Intacto Car — login, sincronização em tempo real e auditoria (Supabase).
    Sem URL/chave em config.js nada disso é ativado e o sistema funciona só neste aparelho. */
 (function () {
   'use strict';
@@ -11,12 +10,13 @@
   const LIB_CDN = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js';
   const ORIGEM = /electron/i.test(navigator.userAgent) ? 'aplicativo' : 'site';
   const META_SYNC = ['cats', 'deletePassword'];          // chaves da store "meta" que são sincronizadas
-  const LS = { fila: 'ic_fila', cursor: 'ic_cursor', init: 'ic_init', logs: 'ic_logs', logado: 'ic_logado' };
+  const LS = { fila: 'ic_fila', cursor: 'ic_cursor', init: 'ic_init', audit: 'ic_audit_queue', logado: 'ic_logado' };
   const $ = id => document.getElementById(id);
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const lsGet = k => { try { return localStorage.getItem(k); } catch (_) { return null; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (_) { /* sem espaço */ } };
   const lsDel = k => { try { localStorage.removeItem(k); } catch (_) { /* ok */ } };
+  lsDel('ic_logs');
 
   document.documentElement.classList.add('ic-bloqueado');  // esconde o app até o login
 
@@ -24,7 +24,7 @@
   let sb = null, sessao = null, canal = null;
   let entrou = false, offline = false, recuperando = false, loginManual = false, tipoEntrada = 'Login';
   let conectado = false, enviando = false, puxando = false, pendentePuxar = false;
-  let erroSync = false, aplicando = false, painelAtual = '', emailRecuperacao = '', sessaoRecuperacao = null;
+  let erroSync = false, erroLogs = false, aplicando = false, painelAtual = '', emailRecuperacao = '', sessaoRecuperacao = null;
   let timerEnvio = null, timerPuxar = null, timerRetry = null, timers = [];
 
   /* ------------------------------------------------------------------ fila de alterações locais */
@@ -269,30 +269,80 @@
     timers.forEach(clearInterval); timers = [];
   }
 
-  /* ------------------------------------------------------------------ logs no Discord */
-  const lerLogs = () => { try { return JSON.parse(lsGet(LS.logs) || '[]'); } catch (_) { return []; } };
-  const gravarLogs = l => lsSet(LS.logs, JSON.stringify(l.slice(-200)));
+  /* ------------------------------------------------------------------ auditoria no Supabase */
+  const lerAuditoria = () => {
+    try {
+      const itens = JSON.parse(lsGet(LS.audit) || '[]');
+      return Array.isArray(itens) ? itens : [];
+    } catch (_) { return []; }
+  };
+  const gravarAuditoria = itens => {
+    try { localStorage.setItem(LS.audit, JSON.stringify(itens)); }
+    catch (error) {
+      erroLogs = true;
+      console.error('Não foi possível guardar a fila local de auditoria:', error);
+    }
+  };
+  const limparDadosAuditoria = (valor, profundidade = 0) => {
+    if (profundidade > 6) return '[limite de profundidade]';
+    if (typeof valor === 'string') return valor.slice(0, 160);
+    if (Array.isArray(valor)) {
+      const itens = valor.slice(0, 8).map(item => limparDadosAuditoria(item, profundidade + 1));
+      if (valor.length > 8) itens.push({ itens_adicionais: valor.length - 8 });
+      return itens;
+    }
+    if (valor && typeof valor === 'object') {
+      return Object.fromEntries(Object.entries(valor).slice(0, 30).map(([chave, item]) => [
+        chave,
+        /(password|senha|token|secret|webhook|foto|image|imagem|attachment|anexo|base64)/i.test(chave)
+          ? '[removido]'
+          : limparDadosAuditoria(item, profundidade + 1)
+      ]));
+    }
+    return valor;
+  };
+  const nivelAuditoria = nivel => ['ok', 'aviso', 'perigo'].includes(nivel) ? nivel : 'info';
   let enviandoLogs = false;
-  function registrarLog(titulo, texto, nivel) {
-    const l = lerLogs();
-    l.push({ t: String(titulo || ''), x: String(texto || ''), n: nivel || 'info', q: new Date().toISOString() });
-    gravarLogs(l);
+  function registrarLog(titulo, texto, nivel, detalhes) {
+    const filaAudit = lerAuditoria();
+    filaAudit.push({
+      t: String(titulo || '').slice(0, 200),
+      x: String(texto || '').slice(0, 2000),
+      n: nivelAuditoria(nivel),
+      d: limparDadosAuditoria(detalhes || {}),
+      q: new Date().toISOString()
+    });
+    gravarAuditoria(filaAudit);
     enviarLogs();
   }
   async function enviarLogs() {
     if (!sb || !sessao || enviandoLogs || !navigator.onLine) return;
     enviandoLogs = true;
     try {
-      let l = lerLogs();
-      while (l.length) {
-        const it = l[0];
-        const { error } = await sb.rpc('registrar_log', { p_titulo: it.t, p_texto: it.x, p_nivel: it.n, p_origem: ORIGEM, p_quando: it.q });
-        if (error) { console.warn('Falha ao enviar log:', error.message); break; }
-        l.shift(); gravarLogs(l);
-        await sleep(400);                                    // respeita o limite de mensagens do Discord
+      let filaAudit = lerAuditoria();
+      while (filaAudit.length) {
+        const it = filaAudit[0];
+        const { error } = await sb.rpc('registrar_log', {
+          p_titulo: it.t,
+          p_texto: it.x,
+          p_nivel: it.n,
+          p_origem: ORIGEM,
+          p_detalhes: it.d || {}
+        });
+        if (error) {
+          erroLogs = true;
+          console.error('Falha ao registrar auditoria no Supabase:', error.message);
+          break;
+        }
+        filaAudit.shift(); gravarAuditoria(filaAudit);
+        await sleep(100);
       }
-    } catch (e) { console.warn('Falha ao enviar log:', e); }
-    finally { enviandoLogs = false; }
+      if (!filaAudit.length) erroLogs = false;
+    } catch (e) {
+      erroLogs = true;
+      console.error('Falha ao registrar auditoria no Supabase:', e);
+    }
+    finally { enviandoLogs = false; status(); }
   }
   window.registrarLog = registrarLog;
 
@@ -306,6 +356,7 @@
     let cls, t;
     if (offline || !navigator.onLine) { cls = 'off'; t = 'Offline' + (pend ? ` — ${pend} alteração(ões) a enviar` : ' — salvando neste aparelho'); }
     else if (erroSync) { cls = 'erro'; t = 'Falha ao sincronizar — tentando de novo'; }
+    else if (erroLogs) { cls = 'erro'; t = 'Falha ao enviar logs — confira a configuração do Supabase'; }
     else if (enviando || puxando || pend > 0) { cls = 'sync'; t = 'Sincronizando…'; }
     else if (conectado) { cls = 'ok'; t = 'Conectado — em tempo real'; }
     else { cls = 'sync'; t = 'Conectando…'; }
@@ -501,7 +552,7 @@
       assinar();
       timers.push(setInterval(puxar, 60000), setInterval(() => { enviar(); enviarLogs(); }, 30000));
       status('ok');
-      if (foiLogin) registrarLog(cadastro ? '📝 Novo cadastro' : '🔐 Login', `${cadastro ? 'Criou uma conta' : 'Entrou no sistema'} pelo ${ORIGEM}.`, 'ok');
+      if (foiLogin) registrarLog(cadastro ? '📝 Novo cadastro' : '🔐 Login', `${cadastro ? 'Criou uma conta' : 'Entrou no sistema'} pelo ${ORIGEM}.`, 'ok', { before: null, after: { tipo: cadastro ? 'cadastro' : 'login' } });
     } catch (e) {
       console.error('Falha na sincronização inicial:', e);
       status('erro'); clearTimeout(timerRetry); timerRetry = setTimeout(enviar, 15000);
@@ -530,7 +581,7 @@
     }
   }
   async function enviarLogsAntesDeSair() {
-    if (entrou && sessao && !offline) { registrarLog('🚪 Saída', `Saiu do sistema (${ORIGEM}).`, 'info'); await Promise.race([enviarLogs(), sleep(2500)]); }
+    if (entrou && sessao && !offline) { registrarLog('🚪 Saída', `Saiu do sistema (${ORIGEM}).`, 'info', { before: { sessao: 'ativa' }, after: { sessao: 'encerrada' } }); await Promise.race([enviarLogs(), sleep(2500)]); }
   }
 
   function tratarAuth(ev, ses) {
