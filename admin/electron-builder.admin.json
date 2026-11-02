@@ -1,0 +1,41 @@
+{
+  "appId": "com.autopecas.estoque.admin",
+  "productName": "Intacto Car Painel Admin",
+  "extraMetadata": {
+    "name": "intacto-car-painel-admin",
+    "productName": "Intacto Car Painel Admin",
+    "version": "1.0.11",
+    "main": "admin/admin-main.js"
+  },
+  "files": [
+    "admin/admin-main.js",
+    "config.js",
+    "admin/index.html",
+    "admin/admin.js",
+    "admin/icone.png"
+  ],
+  "directories": {
+    "output": "instalador-admin"
+  },
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": [
+          "x64"
+        ]
+      }
+    ],
+    "icon": "admin/icone.png",
+    "artifactName": "Intacto-Car-Painel-Admin.exe"
+  },
+  "nsis": {
+    "oneClick": true,
+    "perMachine": false,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "Intacto Car Painel Admin",
+    "runAfterFinish": true,
+    "language": "1046"
+  }
+}

@@ -177,6 +177,7 @@ begin
     public.sanitize_audit_json(coalesce(p_detalhes, '{}'::jsonb))
   );
 end $$;
+
 revoke all on function public.registrar_log(text, text, text, text, jsonb) from public, anon;
 grant execute on function public.registrar_log(text, text, text, text, jsonb) to authenticated;
 
@@ -188,6 +189,272 @@ create table if not exists public.admin_clear_passwords (
 );
 alter table public.admin_clear_passwords enable row level security;
 revoke all on public.admin_clear_passwords from anon, authenticated;
+
+create table if not exists public.admin_area_passwords (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  salt text not null check (salt ~ '^[0-9a-f]{32}$'),
+  password_hash text not null check (password_hash ~ '^[0-9a-f]{64}$'),
+  updated_at timestamptz not null default now()
+);
+alter table public.admin_area_passwords enable row level security;
+revoke all on public.admin_area_passwords from anon, authenticated;
+
+create table if not exists public.admin_area_password_attempts (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  failed_attempts integer not null default 0 check (failed_attempts >= 0),
+  locked_until timestamptz,
+  updated_at timestamptz not null default now()
+);
+alter table public.admin_area_password_attempts enable row level security;
+revoke all on public.admin_area_password_attempts from anon, authenticated;
+
+create or replace function public.admin_get_area_password_salt()
+returns text
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if auth.uid() is null or not public.admin_is_authorized() then
+    raise exception 'Acesso administrativo obrigatório.';
+  end if;
+  return (
+    select salt
+    from public.admin_area_passwords
+    where user_id = auth.uid()
+  );
+end $$;
+revoke all on function public.admin_get_area_password_salt() from public, anon;
+grant execute on function public.admin_get_area_password_salt() to authenticated;
+
+drop function if exists public.admin_set_area_password(text, text, text);
+create function public.admin_set_area_password(
+  p_salt text,
+  p_hash text,
+  p_current_hash text default null
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_actor_id uuid := auth.uid();
+  v_saved_hash text;
+  v_has_password boolean;
+begin
+  if v_actor_id is null or not public.admin_is_authorized() then
+    raise exception 'Acesso administrativo obrigatório.';
+  end if;
+  if p_salt is null or p_salt !~ '^[0-9a-f]{32}$'
+     or p_hash is null or p_hash !~ '^[0-9a-f]{64}$' then
+    raise exception 'Formato inválido para a senha administrativa.';
+  end if;
+
+  perform 1 from auth.users where id = v_actor_id for update;
+  select password_hash
+    into v_saved_hash
+    from public.admin_area_passwords
+    where user_id = v_actor_id
+    for update;
+  v_has_password := found;
+
+  if v_has_password and p_current_hash is null then
+    raise exception 'Senha administrativa atual incorreta.';
+  end if;
+  if v_has_password and not public.admin_verify_area_password(p_current_hash) then
+    return false;
+  end if;
+  if not v_has_password and p_current_hash is not null then
+    raise exception 'Não há uma senha administrativa configurada para esta conta.';
+  end if;
+
+  insert into public.admin_area_passwords (user_id, salt, password_hash, updated_at)
+  values (v_actor_id, p_salt, p_hash, now())
+  on conflict (user_id) do update
+    set salt = excluded.salt,
+        password_hash = excluded.password_hash,
+        updated_at = excluded.updated_at;
+  delete from public.admin_area_password_attempts where user_id = v_actor_id;
+  return true;
+end $$;
+revoke all on function public.admin_set_area_password(text, text, text) from public, anon;
+grant execute on function public.admin_set_area_password(text, text, text) to authenticated;
+
+create or replace function public.admin_verify_area_password(p_password_hash text)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_actor_id uuid := auth.uid();
+  v_saved_hash text;
+  v_failed_attempts integer;
+  v_locked_until timestamptz;
+begin
+  if auth.uid() is null or not public.admin_is_authorized() then
+    raise exception 'Acesso administrativo obrigatório.';
+  end if;
+
+  insert into public.admin_area_password_attempts (user_id)
+  values (v_actor_id)
+  on conflict (user_id) do nothing;
+  select failed_attempts, locked_until
+    into v_failed_attempts, v_locked_until
+    from public.admin_area_password_attempts
+    where user_id = v_actor_id
+    for update;
+  if v_locked_until is not null and v_locked_until > now() then
+    raise exception 'Muitas tentativas incorretas. Aguarde 15 minutos e tente novamente.';
+  end if;
+
+  select password_hash
+    into v_saved_hash
+    from public.admin_area_passwords
+    where user_id = auth.uid();
+  if v_saved_hash is not null
+     and p_password_hash is not null
+     and p_password_hash ~ '^[0-9a-f]{64}$'
+     and p_password_hash = v_saved_hash then
+    update public.admin_area_password_attempts
+      set failed_attempts = 0, locked_until = null, updated_at = now()
+      where user_id = v_actor_id;
+    return true;
+  end if;
+
+  v_failed_attempts := v_failed_attempts + 1;
+  update public.admin_area_password_attempts
+    set failed_attempts = v_failed_attempts,
+        locked_until = case when v_failed_attempts >= 5 then now() + interval '15 minutes' else null end,
+        updated_at = now()
+    where user_id = v_actor_id;
+  return false;
+end $$;
+revoke all on function public.admin_verify_area_password(text) from public, anon;
+grant execute on function public.admin_verify_area_password(text) to authenticated;
+
+create extension if not exists pgcrypto with schema extensions;
+
+drop function if exists public.admin_reset_delete_password(text, text, text);
+create function public.admin_reset_delete_password(
+  p_salt text,
+  p_hash text,
+  p_admin_hash text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_actor_id uuid := auth.uid();
+  v_actor_email text;
+begin
+  if v_actor_id is null or not public.admin_is_authorized() then
+    raise exception 'Acesso administrativo obrigatório.';
+  end if;
+  if p_salt is null or p_salt !~ '^[0-9a-f]{32}$'
+     or p_hash is null or p_hash !~ '^[0-9a-f]{64}$' then
+    raise exception 'Formato inválido para a senha de exclusão.';
+  end if;
+  if not public.admin_verify_area_password(p_admin_hash) then
+    return false;
+  end if;
+
+  insert into public.registros (kind, id, data, deleted)
+  values (
+    'meta',
+    'deletePassword',
+    jsonb_build_object('version', 1, 'salt', p_salt, 'hash', p_hash),
+    false
+  )
+  on conflict (kind, id) do update
+    set data = excluded.data,
+        deleted = false;
+
+  select coalesce(email, 'usuário')
+    into v_actor_email
+    from auth.users
+    where id = v_actor_id;
+  insert into public.audit_logs (actor_id, actor_email, title, description, severity, source, details)
+  values (
+    v_actor_id,
+    coalesce(v_actor_email, 'usuário'),
+    'Senha de exclusão redefinida',
+    'A senha compartilhada de exclusão foi redefinida pela Área Admin.',
+    'aviso',
+    'aplicativo',
+    '{}'::jsonb
+  );
+  return true;
+end $$;
+revoke all on function public.admin_reset_delete_password(text, text, text) from public, anon;
+grant execute on function public.admin_reset_delete_password(text, text, text) to authenticated;
+
+drop function if exists public.admin_reset_user_password(text, text, text);
+create function public.admin_reset_user_password(
+  p_email text,
+  p_new_password text,
+  p_admin_hash text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_actor_id uuid := auth.uid();
+  v_actor_email text;
+  v_target_id uuid;
+begin
+  if v_actor_id is null or not public.admin_is_authorized() then
+    raise exception 'Acesso administrativo obrigatório.';
+  end if;
+  if p_email is null or length(btrim(p_email)) > 320
+     or btrim(p_email) !~* '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$' then
+    raise exception 'Informe um e-mail válido.';
+  end if;
+  if p_new_password is null or length(p_new_password) < 8 or length(p_new_password) > 128 then
+    raise exception 'A nova senha precisa ter entre 8 e 128 caracteres.';
+  end if;
+  if not public.admin_verify_area_password(p_admin_hash) then
+    return false;
+  end if;
+
+  select id
+    into v_target_id
+    from auth.users
+    where lower(email) = lower(btrim(p_email))
+    limit 1;
+  if v_target_id is null then
+    raise exception 'Não encontramos uma conta com esse e-mail.';
+  end if;
+
+  update auth.users
+    set encrypted_password = extensions.crypt(p_new_password, extensions.gen_salt('bf')),
+        updated_at = now()
+    where id = v_target_id;
+  delete from auth.sessions where user_id = v_target_id;
+
+  select coalesce(email, 'usuário')
+    into v_actor_email
+    from auth.users
+    where id = v_actor_id;
+  insert into public.audit_logs (actor_id, actor_email, title, description, severity, source, details)
+  values (
+    v_actor_id,
+    coalesce(v_actor_email, 'usuário'),
+    'Senha de usuário redefinida',
+    'A senha de uma conta foi redefinida pela Área Admin.',
+    'aviso',
+    'site',
+    jsonb_build_object('email', lower(btrim(p_email)))
+  );
+  return true;
+end $$;
+revoke all on function public.admin_reset_user_password(text, text, text) from public, anon;
+grant execute on function public.admin_reset_user_password(text, text, text) to authenticated;
 
 create or replace function public.admin_get_clear_password_salt()
 returns text
@@ -367,3 +634,5 @@ begin
     $job$delete from public.audit_logs where created_at < now() - interval '12 months'$job$
   );
 end $$;
+
+notify pgrst, 'reload schema';

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1f2a30">
+<link rel="icon" type="image/png" href="./icone.png">
+<title>Painel administrativo — Intacto Car</title>
+<style>
+:root{color-scheme:light dark;--bg:#eceff1;--card:#fff;--ink:#1f2a30;--mut:#5f6f78;--line:#cfd6da;--accent:#0564f2;--danger:#b3261e}
+@media(prefers-color-scheme:dark){:root{--bg:#161d21;--card:#202a30;--ink:#e8edf0;--mut:#9aabb3;--line:#33424a;--accent:#6da8ff;--danger:#ff8a80}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px "Segoe UI",Roboto,Arial,sans-serif}
+header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 24px;background:#1f2a30;color:#e8edf0}
+header .brand{display:flex;align-items:center;gap:12px}
+header .brand img{width:48px;height:48px;flex:none;object-fit:contain;border-radius:10px}
+header h1{margin:0;font-size:20px}header p{margin:4px 0 0;color:#b8c5cb;font-size:13px}
+a{color:inherit}
+main{max-width:1400px;margin:0 auto;padding:24px}
+.topline{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+#connection{color:var(--mut);overflow-wrap:anywhere}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px}
+.filters{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:10px;align-items:end}
+label{display:grid;gap:5px;color:var(--mut);font-size:12px;font-weight:600}
+input,select,button{font:inherit}
+input,select{width:100%;min-height:38px;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--card);color:var(--ink)}
+button{min-height:38px;border:0;border-radius:6px;padding:8px 14px;background:var(--accent);color:#fff;font-weight:700;cursor:pointer}
+button.secondary{border:1px solid var(--line);background:var(--card);color:var(--ink)}
+button.danger{background:var(--danger)}
+button:disabled{opacity:.5;cursor:default}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.filters>.actions{grid-column:1/-1}
+.summary{display:flex;gap:10px;flex-wrap:wrap;color:var(--mut);font-size:13px}
+.summary strong{color:var(--ink)}
+#message{margin:0 0 14px;padding:11px 13px;border-radius:7px;background:#b3261e14;color:var(--danger);white-space:pre-wrap}
+#message[hidden]{display:none}
+#message.success{background:#2e7d4f18;color:#2e7d4f}
+.table-wrap{overflow:auto}
+table{width:100%;border-collapse:collapse;min-width:900px}
+th,td{text-align:left;vertical-align:top;padding:10px;border-bottom:1px solid var(--line)}
+th{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+td small{display:block;color:var(--mut);margin-top:4px}
+.badge{display:inline-block;padding:3px 8px;border-radius:999px;background:#0564f21a;color:var(--accent);font-weight:700}
+.badge.ok{background:#2e7d4f22;color:#2e7d4f}.badge.aviso{background:#b26a0022;color:#b26a00}.badge.perigo{background:#b3261e22;color:var(--danger)}
+details summary{color:var(--accent);cursor:pointer;font-weight:600}
+pre{max-width:520px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--mut);font:12px Consolas,monospace}
+.pagination{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:14px}
+.empty{text-align:center;padding:32px;color:var(--mut)}
+input[type=checkbox]{width:18px;height:18px;min-height:0;padding:0;accent-color:var(--accent);vertical-align:middle;cursor:pointer}
+.selection-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:12px}
+.selection-bar .summary{margin-right:auto}
+.audit-details{min-width:190px}
+.audit-details summary{display:flex;align-items:center;gap:7px;list-style:none;padding:8px 10px;border:1px solid #0564f244;border-radius:8px;background:#0564f20d;color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;transition:background .16s ease,transform .16s ease}
+.audit-details summary::-webkit-details-marker{display:none}
+.audit-details summary::before{content:"↔";font-size:15px}
+.audit-details summary:hover{background:#0564f21a;transform:translateY(-1px)}
+.audit-compare{display:grid;grid-template-columns:repeat(2,minmax(210px,1fr));gap:10px;min-width:min(460px,70vw);margin-top:10px}
+.audit-snapshot{min-width:0;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:0 4px 14px #1f2a3010}
+.audit-snapshot.before{border-top:3px solid #e0a02f}
+.audit-snapshot.after{border-top:3px solid #2e9b71}
+.audit-snapshot-heading{display:flex;align-items:center;gap:7px;margin-bottom:9px;font-size:10px;font-weight:800;letter-spacing:.9px;color:var(--mut)}
+.audit-snapshot-heading::before{content:"";width:8px;height:8px;border-radius:50%;background:#e0a02f}
+.audit-snapshot.after .audit-snapshot-heading::before{background:#2e9b71}
+.audit-snapshot dl{display:grid;gap:8px;margin:0}
+.audit-snapshot dl>div{display:grid;grid-template-columns:minmax(76px,.7fr) minmax(0,1.3fr);gap:8px;padding-top:7px;border-top:1px solid var(--line)}
+.audit-snapshot dt{color:var(--mut);font-size:11px;font-weight:700;overflow-wrap:anywhere}
+.audit-snapshot dd{min-width:0;margin:0;font-size:12px;overflow-wrap:anywhere}
+.audit-snapshot dd pre{max-width:100%;max-height:180px;overflow:auto;margin:0;padding:7px;border-radius:6px;background:#cfd6da22;font-size:11px}
+.audit-snapshot-empty{margin:0;color:var(--mut);font-size:12px}
+#loginPanel{position:fixed;inset:0;z-index:20;display:grid;place-items:center;overflow:auto;margin:0;padding:24px;border:0;border-radius:0;background:linear-gradient(135deg,rgba(4,23,39,.58),rgba(7,15,20,.78)),url("./icone.png") center/cover fixed}
+#loginPanel[hidden]{display:none}
+.auth-card{position:relative;width:min(460px,100%);max-height:calc(100vh - 48px);overflow:auto;padding:32px;background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:0 26px 80px #0009;animation:auth-enter .28s ease both}
+.auth-brand{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:25px}
+.auth-brand img{width:50px;height:50px;flex:none;object-fit:contain;border-radius:15px;box-shadow:0 8px 20px #0564f244}
+.auth-brand strong{display:block;font-size:19px;line-height:1.2}
+.auth-brand small{display:block;margin-top:4px;color:var(--mut);font-size:12px}
+.auth-kicker{display:block;margin-bottom:6px;color:var(--accent);font-size:10px;font-weight:800;letter-spacing:1.2px;text-align:center}
+.auth-card h2{margin:0 0 7px;font-size:24px;letter-spacing:-.4px;text-align:center}
+.auth-intro{margin:0 auto 18px;max-width:340px;color:var(--mut);font-size:13px;line-height:1.55;text-align:center}
+.auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:20px 0;padding:4px;border:1px solid var(--line);border-radius:10px;background:#cfd6da33}
+.auth-tabs button{min-height:38px;border:0;border-radius:7px;background:transparent;color:var(--mut);font-weight:700}
+.auth-tabs button[aria-selected=true]{background:var(--card);color:var(--accent);box-shadow:0 2px 8px #1f2a3018}
+.auth-form{display:grid;gap:11px}
+.auth-form[hidden]{display:none}
+.auth-form label{gap:6px;color:var(--ink);font-size:12px}
+.auth-form input{min-height:46px;padding:11px 13px;border-radius:9px;transition:border-color .16s ease,box-shadow .16s ease}
+.auth-form input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px #0564f222}
+.auth-form button[type=submit]{min-height:46px;margin-top:6px;border-radius:9px;background:linear-gradient(110deg,#0564f2,#008e9c);box-shadow:0 6px 16px #0564f233;transition:transform .16s ease,box-shadow .16s ease}
+.auth-form button[type=submit]:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 9px 20px #0564f244}
+.auth-notice{margin:16px 0 0;padding:10px 12px;border:1px solid #0564f233;border-radius:9px;background:#0564f20b;color:var(--mut);font-size:11px;line-height:1.5;text-align:center}
+#authMessage{margin:0 0 14px;padding:11px 12px;border:1px solid #b3261e33;border-radius:9px;background:#b3261e12;color:var(--danger);font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+#authMessage.success{border-color:#2e7d4f44;background:#2e7d4f12;color:#2e7d4f}
+#authMessage[hidden]{display:none}
+@keyframes auth-enter{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:none}}
+dialog{width:min(480px,calc(100% - 32px));border:1px solid var(--line);border-radius:16px;padding:24px;background:var(--card);color:var(--ink);box-shadow:0 20px 60px #0004}
+dialog::backdrop{background:#0009}
+dialog h2{margin-top:0}
+dialog form{display:grid;gap:12px}
+dialog menu{display:flex;justify-content:flex-end;gap:8px;padding:0;margin:6px 0 0}
+dialog menu button{margin:0}
+.admin-area-kicker{display:block;color:var(--accent);font-size:10px;font-weight:800;letter-spacing:1px;margin-bottom:6px}
+.admin-area-options{display:grid;gap:8px;margin-top:16px}
+.admin-area-options button{text-align:left;min-height:44px}
+.admin-area-message{margin:12px 0 0;color:var(--danger);font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
+.admin-area-message:empty{display:none}
+.admin-area-message.success{color:#2e7d4f}
+@media(max-width:850px){main{padding:14px}.filters{grid-template-columns:repeat(2,minmax(0,1fr))}header{padding:15px}.audit-compare{grid-template-columns:1fr;min-width:min(280px,70vw)}}
+@media(max-width:520px){#loginPanel{padding:12px}.auth-card{max-height:calc(100vh - 24px);padding:26px 22px;border-radius:16px}.selection-bar{align-items:flex-start}.selection-bar .summary{flex:1 1 100%}}
+@media(prefers-reduced-motion:reduce){.auth-card,.auth-form input,.auth-form button,.audit-details summary{animation:none!important;transition:none!important}}
+</style>
+<script src="../config.js"></script>
+<script src="./admin.js?v=3" defer></script>
+</head>
+<body>
+<header>
+  <div class="brand"><img src="./icone.png" alt="Logo Intacto Car"><div><h1>Intacto Car</h1><p>Painel administrativo separado do estoque</p></div></div>
+  <a id="backToApp" href="./index.html" target="_blank" rel="noopener">Abrir sistema</a>
+</header>
+<main>
+  <div class="topline"><span id="connection">Verificando sessão e permissão…</span><button id="refresh" type="button" class="secondary">Atualizar</button></div>
+  <p id="message" role="alert" hidden></p>
+  <section id="loginPanel" aria-label="Acesso ao painel administrativo" hidden>
+    <div class="auth-card">
+      <div class="auth-brand"><img src="./icone.png" alt=""><div><strong>Intacto Car</strong><small>Painel administrativo</small></div></div>
+      <span class="auth-kicker">ACESSO SEGURO</span>
+      <h2 id="authTitle">Bem-vindo de volta</h2>
+      <p class="auth-intro" id="authIntro">Entre com sua conta do sistema. O acesso administrativo é validado separadamente.</p>
+      <div class="auth-tabs" role="tablist" aria-label="Acesso à conta">
+        <button id="showLoginTab" type="button" role="tab" aria-selected="true" aria-controls="loginForm">Entrar</button>
+        <button id="showRegisterTab" type="button" role="tab" aria-selected="false" aria-controls="registerForm">Criar conta</button>
+      </div>
+      <p id="authMessage" role="alert" hidden></p>
+      <form id="loginForm" class="auth-form">
+        <label for="loginEmail">E-mail<input id="loginEmail" type="email" autocomplete="username" required></label>
+        <label for="loginPassword">Senha<input id="loginPassword" type="password" autocomplete="current-password" required></label>
+        <button id="loginButton" type="submit">Entrar no painel</button>
+      </form>
+      <form id="registerForm" class="auth-form" hidden>
+        <label for="registerEmail">E-mail<input id="registerEmail" type="email" autocomplete="email" required></label>
+        <label for="registerPassword">Senha (mínimo de 8 caracteres)<input id="registerPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
+        <label for="registerPasswordConfirm">Confirmar senha<input id="registerPasswordConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
+        <button id="registerButton" type="submit">Criar conta</button>
+      </form>
+      <p class="auth-notice">Criar conta não libera acesso administrativo. Um administrador precisa autorizar sua conta.</p>
+    </div>
+  </section>
+  <div class="actions" style="justify-content:flex-end;margin-bottom:12px">
+    <button id="adminAreaButton" type="button" class="secondary" hidden>Área Admin</button>
+    <button id="configureClearPassword" type="button" class="secondary" hidden>Configurar senha para limpar</button>
+    <button id="logout" type="button" class="secondary" hidden>Sair da conta</button>
+  </div>
+  <section class="panel filters" aria-label="Filtros de auditoria">
+    <label>Buscar na ação ou descrição<input id="searchTitle" type="search" placeholder="Ex.: produto editado"></label>
+    <label>Usuário<input id="searchUser" type="search" placeholder="E-mail"></label>
+    <label>Origem<select id="source"><option value="">Todas</option><option value="site">Site</option><option value="aplicativo">Aplicativo</option></select></label>
+    <label>Nível<select id="severity"><option value="">Todos</option><option value="info">Informação</option><option value="ok">Sucesso</option><option value="aviso">Atenção</option><option value="perigo">Crítico</option></select></label>
+    <label>De<input id="fromDate" type="date"></label>
+    <label>Até<input id="toDate" type="date"></label>
+    <div class="actions"><button id="applyFilters" type="button">Filtrar</button><button id="clearFilters" type="button" class="secondary">Limpar</button><button id="export" type="button" class="secondary">Exportar CSV</button></div>
+  </section>
+  <section class="panel">
+    <div class="summary" id="summary">Nenhum registro carregado.</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th><input id="selectPage" type="checkbox" aria-label="Selecionar registros desta página"></th><th>Data e hora</th><th>Usuário</th><th>Ação</th><th>Nível</th><th>Origem</th><th>Alterações</th><th>Ações</th></tr></thead>
+        <tbody id="rows"><tr><td class="empty" colspan="8">Aguardando autorização.</td></tr></tbody>
+      </table>
+    </div>
+    <div class="selection-bar">
+      <span id="selectionInfo" class="summary">0 selecionados</span>
+      <button id="selectPageButton" type="button" class="secondary" disabled>Selecionar esta página</button>
+      <button id="deleteSelected" type="button" class="danger" disabled>Limpar selecionados</button>
+    </div>
+    <div class="pagination"><button id="previous" type="button" class="secondary">Anterior</button><span id="pageInfo">Página 0</span><button id="next" type="button" class="secondary">Próxima</button></div>
+  </section>
+</main>
+<dialog id="clearPasswordSetup">
+  <form id="clearPasswordSetupForm">
+    <h2 id="clearPasswordSetupTitle">Configurar senha para limpar</h2>
+    <p id="clearPasswordSetupInfo">A senha será vinculada à sua conta administradora.</p>
+    <label id="clearPasswordCurrentWrap" hidden>Senha atual<input id="clearPasswordCurrent" type="password" autocomplete="current-password" maxlength="128"></label>
+    <label>Nova senha<input id="clearPasswordNew" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
+    <label>Confirmar senha<input id="clearPasswordConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
+    <p id="clearPasswordSetupError" role="alert" hidden></p>
+    <menu><button id="cancelPasswordSetup" type="button" class="secondary">Cancelar</button><button type="submit">Salvar senha</button></menu>
+  </form>
+</dialog>
+<dialog id="clearPasswordVerify">
+  <form id="clearPasswordVerifyForm">
+    <h2>Confirmar limpeza</h2>
+    <p id="clearPasswordVerifyInfo">Digite a senha configurada para sua conta administradora.</p>
+    <label>Senha de limpeza<input id="clearPasswordInput" type="password" autocomplete="current-password" maxlength="128" required></label>
+    <p id="clearPasswordVerifyError" role="alert" hidden></p>
+    <menu><button id="cancelPasswordVerify" type="button" class="secondary">Cancelar</button><button type="submit" class="danger">Confirmar</button></menu>
+  </form>
+</dialog>
+<dialog id="adminAreaDialog">
+  <span class="admin-area-kicker">ACESSO PROTEGIDO</span>
+  <h2 id="adminAreaTitle">Área Admin</h2>
+  <p id="adminAreaInfo">Acesso restrito a contas administradoras autorizadas.</p>
+  <section id="adminAreaSetup" hidden>
+    <label>Crie sua senha administrativa (mínimo de 8 caracteres)<input id="adminAreaNew" type="password" autocomplete="new-password" minlength="8" maxlength="128"></label>
+    <label>Confirmar senha administrativa<input id="adminAreaConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="128"></label>
+    <menu><button id="adminAreaCancelSetup" type="button" class="secondary">Cancelar</button><button id="adminAreaSaveSetup" type="button">Cadastrar senha</button></menu>
+  </section>
+  <section id="adminAreaVerify" hidden>
+    <label>Senha administrativa<input id="adminAreaPassword" type="password" autocomplete="current-password" maxlength="128"></label>
+    <menu><button id="adminAreaCancelVerify" type="button" class="secondary">Cancelar</button><button id="adminAreaVerifyButton" type="button">Entrar na área</button></menu>
+  </section>
+  <section id="adminAreaOptions" hidden>
+    <p>Escolha qual senha deseja redefinir.</p>
+    <div class="admin-area-options">
+      <button id="adminAreaDeleteOption" type="button" class="secondary">Senha de exclusão</button>
+      <button id="adminAreaUserOption" type="button" class="secondary">Senha de usuário</button>
+      <button id="adminAreaChangeOption" type="button" class="secondary">Alterar senha administrativa</button>
+    </div>
+    <menu><button id="adminAreaCloseOptions" type="button" class="secondary">Fechar</button></menu>
+  </section>
+  <section id="adminAreaDelete" hidden>
+    <label>Nova senha de exclusão (mínimo de 8 caracteres)<input id="adminDeleteNew" type="password" autocomplete="new-password" minlength="8" maxlength="128"></label>
+    <label>Confirmar senha de exclusão<input id="adminDeleteConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="128"></label>
+    <menu><button type="button" class="secondary adminAreaBack">Voltar</button><button id="adminDeleteSave" type="button" class="danger">Redefinir senha</button></menu>
+  </section>
+  <section id="adminAreaUser" hidden>
+    <label>E-mail da conta<input id="adminUserEmail" type="email" autocomplete="off" maxlength="320"></label>
+    <label>Nova senha (mínimo de 8 caracteres)<input id="adminUserNew" type="password" autocomplete="new-password" minlength="8" maxlength="128"></label>
+    <label>Confirmar nova senha<input id="adminUserConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="128"></label>
+    <menu><button type="button" class="secondary adminAreaBack">Voltar</button><button id="adminUserSave" type="button" class="danger">Redefinir senha</button></menu>
+  </section>
+  <section id="adminAreaChange" hidden>
+    <label>Nova senha administrativa (mínimo de 8 caracteres)<input id="adminAreaChangeNew" type="password" autocomplete="new-password" minlength="8" maxlength="128"></label>
+    <label>Confirmar nova senha administrativa<input id="adminAreaChangeConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="128"></label>
+    <menu><button type="button" class="secondary adminAreaBack">Voltar</button><button id="adminAreaChangeSave" type="button">Alterar senha</button></menu>
+  </section>
+  <p id="adminAreaMessage" class="admin-area-message" role="status" aria-live="polite"></p>
+</dialog>
+</body>
+</html>

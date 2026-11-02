@@ -99,6 +99,30 @@ window.INTACTO_CONFIG = {
 3. A lateral mostra o estado: **Conectado — em tempo real**, **Sincronizando…** ou
    **Offline**.
 
+## Área Admin
+
+Para liberar o painel administrativo e a **Área Admin** do estoque:
+
+1. No SQL Editor do Supabase, autorize somente os administradores pretendidos:
+
+   ```sql
+   insert into public.admin_allowlist (user_id)
+   select id from auth.users where lower(email) = lower('admin@exemplo.com')
+   on conflict (user_id) do nothing;
+   ```
+
+2. Entre no estoque ou no painel administrativo com uma dessas contas. Na
+   primeira abertura de **Área Admin**, cadastre a senha administrativa daquela
+   conta; ela será salva no servidor somente como hash.
+3. Use **Senha de exclusão** para redefinir a senha compartilhada do estoque, ou
+   **Senha de usuário** para informar o e-mail e a nova senha da conta. A
+   redefinição de uma conta encerra as sessões existentes dela.
+
+As permissões são verificadas no Supabase em cada operação. Não coloque uma
+chave `service_role` no `config.js` nem no código do navegador. Ao atualizar
+uma instalação existente, execute novamente `supabase/setup.sql` no SQL Editor
+para criar as funções e tabelas da Área Admin.
+
 ## Checklist de testes
 
 - [ ] Entrar com e-mail e senha no site.
@@ -115,6 +139,7 @@ window.INTACTO_CONFIG = {
 | "E-mail ou senha incorretos" | Confira se o usuário foi criado no passo 4 com **Auto Confirm User** |
 | Não chega e-mail de recuperação | Veja o spam; confira o template Reset Password e configure SMTP próprio (passo 5) |
 | Painel mostra acesso negado | Autorize a conta pelo SQL do passo 6 e entre novamente no app |
+| Área Admin mostra `Could not find the function public.admin_get_area_password_salt` | No SQL Editor, execute todo o arquivo `supabase/setup.sql`, aguarde a conclusão e reabra o app |
 | Auditoria não atualiza | Confira se aparece **Conectado — em tempo real**, rode `supabase/setup.sql` e reabra o app |
 | Fica em "Falha ao sincronizar" | Confira URL e chave no `config.js` e se o `setup.sql` rodou sem erro |
 | Projeto "pausado" no Supabase | Projetos grátis pausam após ~7 dias sem uso: reative no painel |

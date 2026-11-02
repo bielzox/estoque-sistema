@@ -182,6 +182,12 @@ dialog.msg[open]{animation:msg-in .18s ease}
 .msg .foot button{min-width:110px;min-height:40px}
 button.p.perigo{background:#c62828;color:#fff}
 dialog h2{margin:0 0 12px;font-size:18px}
+.admin-area-heading>span{display:block;color:var(--accent);font-size:10px;font-weight:800;letter-spacing:1px;margin-bottom:6px}
+.admin-area-options{display:grid;gap:8px;margin-top:16px}
+.admin-area-options button{text-align:left;min-height:44px}
+.admin-area-message{margin:12px 0 0;color:var(--danger);font-size:13px}
+.admin-area-message:empty{display:none}
+.admin-area-message.ok{color:#2e9b71}
 label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
 .row{display:flex;gap:10px}.row>*{flex:1;min-width:0}
 .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
@@ -349,6 +355,7 @@ try{
   <button class="side-btn" id="bgpick" style="margin-top:0">Alterar imagem de fundo</button>
   <button class="side-btn" id="bgreset">Restaurar fundo original</button>
   <button class="side-btn" id="passwordConfig">Configurar senha de exclusão</button>
+  <button class="side-btn" id="adminAreaButton">Área Admin</button>
   <input type="file" id="bgfile" accept="image/*" hidden>
   <button class="side-btn" id="bkp">Salvar backup</button>
   <button class="side-btn" id="rst">Restaurar backup</button>
@@ -485,6 +492,55 @@ try{
   <label for="passConfirm">Confirmar nova senha</label><input id="passConfirm" type="password" autocomplete="new-password" minlength="8">
   <div class="foot"><button class="s" id="passCancel">Cancelar</button><button class="p" id="passSave">Salvar senha</button></div>
 </dialog>
+<dialog id="dadmin">
+  <div class="admin-area-heading"><span>ACESSO PROTEGIDO</span><h2 id="adminAreaTitle">Área Admin</h2></div>
+  <p id="adminAreaInfo" class="tag"></p>
+  <section id="adminAreaSetup" hidden>
+    <label for="adminAreaNew">Crie sua senha administrativa (mínimo de 8 caracteres)</label>
+    <input id="adminAreaNew" type="password" autocomplete="new-password" maxlength="128">
+    <label for="adminAreaConfirm">Confirmar senha administrativa</label>
+    <input id="adminAreaConfirm" type="password" autocomplete="new-password" maxlength="128">
+    <div class="foot"><button class="s" id="adminAreaCancelSetup" type="button">Cancelar</button><button class="p" id="adminAreaSaveSetup" type="button">Cadastrar senha</button></div>
+  </section>
+  <section id="adminAreaVerify" hidden>
+    <label for="adminAreaPassword">Senha administrativa</label>
+    <input id="adminAreaPassword" type="password" autocomplete="current-password" maxlength="128">
+    <div class="foot"><button class="s" id="adminAreaCancelVerify" type="button">Cancelar</button><button class="p" id="adminAreaVerifyButton" type="button">Entrar na área</button></div>
+  </section>
+  <section id="adminAreaOptions" hidden>
+    <p>Escolha qual senha deseja redefinir.</p>
+    <div class="admin-area-options">
+      <button class="s" id="adminAreaDeleteOption" type="button">Senha de exclusão</button>
+      <button class="s" id="adminAreaUserOption" type="button">Senha de usuário</button>
+      <button class="s" id="adminAreaChangeOption" type="button">Alterar senha administrativa</button>
+    </div>
+    <div class="foot"><button class="s" id="adminAreaCloseOptions" type="button">Fechar</button></div>
+  </section>
+  <section id="adminAreaDelete" hidden>
+    <label for="adminDeleteNew">Nova senha de exclusão (mínimo de 8 caracteres)</label>
+    <input id="adminDeleteNew" type="password" autocomplete="new-password" maxlength="128">
+    <label for="adminDeleteConfirm">Confirmar senha de exclusão</label>
+    <input id="adminDeleteConfirm" type="password" autocomplete="new-password" maxlength="128">
+    <div class="foot"><button class="s adminAreaBack" type="button">Voltar</button><button class="p perigo" id="adminDeleteSave" type="button">Redefinir senha</button></div>
+  </section>
+  <section id="adminAreaUser" hidden>
+    <label for="adminUserEmail">E-mail da conta</label>
+    <input id="adminUserEmail" type="email" autocomplete="off" maxlength="320">
+    <label for="adminUserNew">Nova senha (mínimo de 8 caracteres)</label>
+    <input id="adminUserNew" type="password" autocomplete="new-password" maxlength="128">
+    <label for="adminUserConfirm">Confirmar nova senha</label>
+    <input id="adminUserConfirm" type="password" autocomplete="new-password" maxlength="128">
+    <div class="foot"><button class="s adminAreaBack" type="button">Voltar</button><button class="p perigo" id="adminUserSave" type="button">Redefinir senha</button></div>
+  </section>
+  <section id="adminAreaChange" hidden>
+    <label for="adminAreaChangeNew">Nova senha administrativa (mínimo de 8 caracteres)</label>
+    <input id="adminAreaChangeNew" type="password" autocomplete="new-password" maxlength="128">
+    <label for="adminAreaChangeConfirm">Confirmar nova senha administrativa</label>
+    <input id="adminAreaChangeConfirm" type="password" autocomplete="new-password" maxlength="128">
+    <div class="foot"><button class="s adminAreaBack" type="button">Voltar</button><button class="p" id="adminAreaChangeSave" type="button">Alterar senha</button></div>
+  </section>
+  <p id="adminAreaMessage" class="admin-area-message" role="status" aria-live="polite"></p>
+</dialog>
 <dialog id="dverify" class="msg perigo">
   <div class="msg-ic">🔒</div>
   <h2>Confirmar exclusão</h2>
@@ -562,9 +618,14 @@ function avisar(texto,{tipo='aviso',titulo,foco}={}){
 }
 
 /* banco de dados */
-function abrir(){return new Promise((ok,er)=>{const r=indexedDB.open('estoque-autopecas',2);
+function abrir(){return new Promise((ok,er)=>{let r;
+  try{r=indexedDB.open('estoque-autopecas')}catch(error){er(error);return}
   r.onupgradeneeded=()=>{const d=r.result;for(const s of ['prods','movs'])if(!d.objectStoreNames.contains(s))d.createObjectStore(s,{keyPath:'id'});if(!d.objectStoreNames.contains('meta'))d.createObjectStore('meta')};
-  r.onsuccess=()=>ok(r.result);r.onerror=()=>er(r.error)})}
+  r.onblocked=()=>console.error('A abertura do banco de estoque está aguardando outra janela ser fechada.');
+  r.onsuccess=()=>{const d=r.result,required=['prods','movs','meta'],missing=required.filter(s=>!d.objectStoreNames.contains(s));
+    if(missing.length){d.close();er(new Error(`O banco não possui as tabelas necessárias: ${missing.join(', ')}.`));return}
+    d.onversionchange=()=>d.close();ok(d)};
+  r.onerror=()=>er(r.error||new Error('O navegador recusou a abertura do banco de estoque.'))})}
 const tx=(s,m='readonly')=>db.transaction(s,m).objectStore(s);
 const req=r=>new Promise((ok,er)=>{r.onsuccess=()=>ok(r.result);r.onerror=()=>er(r.error)});
 const saveCats=()=>req(tx('meta','readwrite').put(cats,'cats'));
@@ -681,11 +742,9 @@ async function recarregar(){
 const logar=(titulo,texto,nivel,detalhes)=>{if(window.registrarLog)window.registrarLog(titulo,texto||'',nivel||'info',detalhes||{})};
 const listaLog=(arr,f,max=12)=>arr.slice(0,max).map(f).join('\n')+(arr.length>max?`\n… e mais ${arr.length-max}`:'');
 async function init(){
-  try{db=await abrir()}catch(e){avisar('Não foi possível abrir o banco de dados do navegador.',{tipo:'erro'});return}
+  try{db=await abrir()}catch(e){console.error('Não foi possível abrir o banco de dados do estoque:',e);avisar(`Não foi possível abrir o banco de dados do estoque (${e?.name||'erro'}). ${e?.message||'Feche o aplicativo e tente novamente.'}`,{tipo:'erro'});return}
   const wallpaper=localStorage.getItem('estoque-intacto-fundo');
   if(wallpaper)document.documentElement.style.setProperty('--wallpaper',`url("${wallpaper}")`);
-  const logo=localStorage.getItem('estoque-intacto-logo');
-  if(logo){$('authLogo').src=logo;document.documentElement.style.setProperty('--brand-logo',`url("${logo}")`)}
   prods=(await req(tx('prods').getAll())).map(fix);
   movs=await req(tx('movs').getAll());
   cats=await req(tx('meta').get('cats'));
@@ -1047,6 +1106,125 @@ $('rout').onchange=e=>{
 for(const id of ['rp','rc','rde','rate'])$(id).oninput=()=>{selectedReport.clear();renderRep()};
 $('passwordConfig').onclick=configurarSenha;
 $('passCancel').onclick=()=>$('dpass').close();
+let adminAreaSalt='',adminAreaHash='';
+const ADMIN_AREA_PANELS=['adminAreaSetup','adminAreaVerify','adminAreaOptions','adminAreaDelete','adminAreaUser','adminAreaChange'];
+function showAdminAreaPanel(panel,title,info){
+  ADMIN_AREA_PANELS.forEach(id=>$(id).hidden=id!==panel);
+  $('adminAreaTitle').textContent=title;
+  $('adminAreaInfo').textContent=info||'';
+  $('adminAreaMessage').textContent='';
+  $('adminAreaMessage').classList.remove('ok');
+}
+function clearAdminAreaInputs(){
+  ['adminAreaNew','adminAreaConfirm','adminAreaPassword','adminDeleteNew','adminDeleteConfirm','adminUserEmail','adminUserNew','adminUserConfirm','adminAreaChangeNew','adminAreaChangeConfirm']
+    .forEach(id=>$(id).value='');
+}
+async function adminAreaRpc(name,args){
+  if(typeof window.intactoAdminRpc!=='function')throw new Error('A conexão administrativa não está disponível. Confira a configuração do Supabase e entre novamente.');
+  return window.intactoAdminRpc(name,args);
+}
+function mensagemErroAreaAdmin(error){
+  const message=error?.message||String(error);
+  if(error?.code==='PGRST202'||(message.includes('admin_get_area_password_salt')&&message.toLowerCase().includes('schema cache')))return 'O Supabase ainda não reconhece as funções da Área Admin. No SQL Editor do projeto, execute todo o arquivo supabase/setup.sql, aguarde a conclusão e tente novamente.';
+  return message;
+}
+async function abrirAreaAdmin(){
+  clearAdminAreaInputs();adminAreaHash='';adminAreaSalt='';
+  try{
+    const authorized=await adminAreaRpc('admin_is_authorized');
+    if(!authorized){await avisar('Esta conta não está autorizada como administradora no Supabase.',{tipo:'erro'});return}
+    adminAreaSalt=await adminAreaRpc('admin_get_area_password_salt');
+    if(adminAreaSalt)showAdminAreaPanel('adminAreaVerify','Área Admin','Informe sua senha administrativa para continuar.');
+    else showAdminAreaPanel('adminAreaSetup','Cadastrar senha administrativa','Este é o primeiro acesso desta conta. Crie uma senha para proteger as redefinições.');
+    $('dadmin').showModal();
+  }catch(error){
+    console.error('Falha ao abrir a Área Admin:',error);
+    await avisar('Não foi possível abrir a Área Admin: '+mensagemErroAreaAdmin(error),{tipo:'erro'});
+  }
+}
+async function cadastrarSenhaAreaAdmin(){
+  const password=$('adminAreaNew').value,confirmPassword=$('adminAreaConfirm').value;
+  if(password.length<8||password.length>128){$('adminAreaMessage').textContent='Use uma senha entre 8 e 128 caracteres.';return}
+  if(password!==confirmPassword){$('adminAreaMessage').textContent='As senhas não conferem.';return}
+  const button=$('adminAreaSaveSetup');button.disabled=true;
+  try{
+    const salt=crypto.getRandomValues(new Uint8Array(16)),hash=await derivePassword(password,salt);
+    if(await adminAreaRpc('admin_set_area_password',{p_salt:bytesToHex(salt),p_hash:bytesToHex(hash),p_current_hash:null})!==true)throw new Error('O banco não confirmou o cadastro da senha administrativa.');
+    adminAreaSalt=bytesToHex(salt);adminAreaHash=bytesToHex(hash);
+    showAdminAreaPanel('adminAreaOptions','Área Admin','Senha cadastrada. Selecione a ação desejada.');
+    $('adminAreaMessage').textContent='Senha administrativa cadastrada com segurança.';
+    $('adminAreaMessage').classList.add('ok');
+    clearAdminAreaInputs();
+  }catch(error){$('adminAreaMessage').textContent='Não foi possível cadastrar a senha: '+(error.message||error)}
+  finally{button.disabled=false}
+}
+async function entrarAreaAdmin(){
+  const button=$('adminAreaVerifyButton');button.disabled=true;
+  try{
+    const hash=bytesToHex(await derivePassword($('adminAreaPassword').value,hexToBytes(adminAreaSalt)));
+    if(!await adminAreaRpc('admin_verify_area_password',{p_password_hash:hash})){
+      $('adminAreaMessage').textContent='Senha administrativa incorreta.';$('adminAreaPassword').value='';$('adminAreaPassword').focus();return;
+    }
+    adminAreaHash=hash;clearAdminAreaInputs();
+    showAdminAreaPanel('adminAreaOptions','Área Admin','Acesso confirmado. Selecione a senha que deseja redefinir.');
+  }catch(error){$('adminAreaMessage').textContent='Não foi possível validar a senha: '+(error.message||error)}
+  finally{button.disabled=false}
+}
+async function salvarSenhaAreaAdmin(){
+  const password=$('adminAreaChangeNew').value;
+  if(password.length<8||password.length>128){$('adminAreaMessage').textContent='Use uma senha entre 8 e 128 caracteres.';return}
+  if(password!==$('adminAreaChangeConfirm').value){$('adminAreaMessage').textContent='As senhas não conferem.';return}
+  const button=$('adminAreaChangeSave');button.disabled=true;
+  try{
+    const salt=crypto.getRandomValues(new Uint8Array(16)),hash=await derivePassword(password,salt);
+    if(await adminAreaRpc('admin_set_area_password',{p_salt:bytesToHex(salt),p_hash:bytesToHex(hash),p_current_hash:adminAreaHash})!==true)throw new Error('A senha administrativa atual não foi confirmada.');
+    adminAreaSalt=bytesToHex(salt);adminAreaHash=bytesToHex(hash);clearAdminAreaInputs();
+    showAdminAreaPanel('adminAreaOptions','Área Admin','Senha administrativa atualizada.');
+    $('adminAreaMessage').classList.add('ok');
+  }catch(error){$('adminAreaMessage').textContent='Não foi possível alterar a senha: '+(error.message||error)}
+  finally{button.disabled=false}
+}
+async function redefinirSenhaExclusao(){
+  const password=$('adminDeleteNew').value;
+  if(password.length<8||password.length>128){$('adminAreaMessage').textContent='Use uma senha entre 8 e 128 caracteres.';return}
+  if(password!==$('adminDeleteConfirm').value){$('adminAreaMessage').textContent='As senhas não conferem.';return}
+  if(!await confirmar('A senha de exclusão será substituída para todos os aparelhos sincronizados. Continuar?',{tipo:'perigo',ok:'Redefinir'}))return;
+  const button=$('adminDeleteSave');button.disabled=true;
+  try{
+    const salt=crypto.getRandomValues(new Uint8Array(16)),hash=await derivePassword(password,salt);
+    const record={version:1,salt:bytesToHex(salt),hash:bytesToHex(hash)};
+    if(await adminAreaRpc('admin_reset_delete_password',{p_salt:record.salt,p_hash:record.hash,p_admin_hash:adminAreaHash})!==true)throw new Error('A senha administrativa não foi confirmada.');
+    try{await req(tx('meta','readwrite').put(record,PASSWORD_KEY))}
+    catch(error){console.error('Senha redefinida no servidor, mas não atualizada neste aparelho:',error);throw new Error('A senha foi redefinida no servidor, mas este aparelho não conseguiu sincronizar a alteração. Recarregue o sistema conectado à internet.')}
+    $('dadmin').close();toast('Senha de exclusão redefinida e sincronizada.');
+  }catch(error){$('adminAreaMessage').textContent='Não foi possível redefinir a senha: '+(error.message||error)}
+  finally{button.disabled=false}
+}
+async function redefinirSenhaUsuario(){
+  const email=$('adminUserEmail').value.trim(),password=$('adminUserNew').value;
+  if(!email||$('adminUserEmail').validity.typeMismatch){$('adminAreaMessage').textContent='Informe um e-mail válido.';$('adminUserEmail').focus();return}
+  if(password.length<8||password.length>128){$('adminAreaMessage').textContent='Use uma senha entre 8 e 128 caracteres.';return}
+  if(password!==$('adminUserConfirm').value){$('adminAreaMessage').textContent='As senhas não conferem.';return}
+  if(!await confirmar(`Redefinir a senha da conta ${email}? As sessões existentes serão encerradas.`,{tipo:'perigo',ok:'Redefinir senha'}))return;
+  const button=$('adminUserSave');button.disabled=true;
+  try{
+    if(await adminAreaRpc('admin_reset_user_password',{p_email:email,p_new_password:password,p_admin_hash:adminAreaHash})!==true)throw new Error('A senha administrativa não foi confirmada.');
+    $('dadmin').close();toast('Senha da conta redefinida. As sessões anteriores foram encerradas.');
+  }catch(error){$('adminAreaMessage').textContent='Não foi possível redefinir a senha: '+(error.message||error)}
+  finally{button.disabled=false}
+}
+$('adminAreaButton').onclick=abrirAreaAdmin;
+$('adminAreaCancelSetup').onclick=$('adminAreaCancelVerify').onclick=$('adminAreaCloseOptions').onclick=()=>$('dadmin').close();
+$('adminAreaSaveSetup').onclick=cadastrarSenhaAreaAdmin;
+$('adminAreaVerifyButton').onclick=entrarAreaAdmin;
+$('adminAreaDeleteOption').onclick=()=>showAdminAreaPanel('adminAreaDelete','Redefinir senha de exclusão','A nova senha será sincronizada com os demais aparelhos.');
+$('adminAreaUserOption').onclick=()=>showAdminAreaPanel('adminAreaUser','Redefinir senha de usuário','Informe o e-mail cadastrado e defina uma nova senha.');
+$('adminAreaChangeOption').onclick=()=>showAdminAreaPanel('adminAreaChange','Alterar senha administrativa','Confirme uma nova senha para proteger a Área Admin.');
+document.querySelectorAll('.adminAreaBack').forEach(button=>button.onclick=()=>showAdminAreaPanel('adminAreaOptions','Área Admin','Selecione a senha que deseja redefinir.'));
+$('adminAreaChangeSave').onclick=salvarSenhaAreaAdmin;
+$('adminDeleteSave').onclick=redefinirSenhaExclusao;
+$('adminUserSave').onclick=redefinirSenhaUsuario;
+$('dadmin').addEventListener('close',()=>{adminAreaHash='';adminAreaSalt='';clearAdminAreaInputs()});
 $('passSave').onclick=async()=>{
   const button=$('passSave'),newPassword=$('passNew').value,confirmPassword=$('passConfirm').value;
   if(newPassword.length<8){$('passInfo').textContent='A senha precisa ter pelo menos 8 caracteres.';$('passNew').focus();return}

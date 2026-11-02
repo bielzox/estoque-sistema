@@ -54,10 +54,11 @@ Após a primeira abertura com internet, o aplicativo web pode funcionar offline.
 
 ## Dados e backups
 
-Produtos, movimentações, anexos e senha de exclusão ficam armazenados localmente
-em cada dispositivo; não há sincronização automática. Use **Salvar backup** no
-aplicativo para transferir ou guardar os dados e mantenha cópias em local seguro.
-Backups não devem ser publicados nem incluídos no repositório.
+Sem configurar o Supabase, produtos, movimentações, anexos e senha de exclusão
+ficam armazenados localmente em cada dispositivo. Com o Supabase configurado,
+produtos, movimentações e a senha de exclusão são sincronizados entre as contas
+autenticadas. Use **Salvar backup** para guardar uma cópia local e mantenha-a em
+local seguro. Backups não devem ser publicados nem incluídos no repositório.
 
 A área **Financeiro** calcula o saldo acumulado e o fluxo do período a partir do
 histórico de movimentações: saídas com motivo **Venda** contam como dinheiro que
@@ -65,10 +66,15 @@ entrou, e entradas com motivo **Compra** contam como dinheiro que saiu. O valor
 total usa o valor unitário multiplicado pela quantidade; ajustes e outros
 motivos não alteram o caixa.
 
-A senha de exclusão é armazenada como hash no dispositivo e não é incluída no
-backup. A exclusão de registros exige essa senha. Excluir uma movimentação apaga
-seu histórico e anexos, mas não recalcula o saldo do produto; excluir um produto
-mantém seu histórico.
+A senha de exclusão é armazenada como hash e não é incluída no backup. A exclusão
+de registros exige essa senha. Com o Supabase ativo, a **Área Admin** permite
+redefini-la para os aparelhos sincronizados ou redefinir a senha de uma conta pelo
+e-mail. Só contas autorizadas em `admin_allowlist` podem usar essa área; cada
+administrador cadastra sua própria senha administrativa no primeiro acesso.
+Redefinir a senha de uma conta encerra as sessões existentes dessa conta.
+
+Excluir uma movimentação apaga seu histórico e anexos, mas não recalcula o saldo
+do produto; excluir um produto mantém seu histórico.
 
 ## Ícones
 

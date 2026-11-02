@@ -10,6 +10,14 @@
   const LIB_CDN = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js';
   const ORIGEM = /electron/i.test(navigator.userAgent) ? 'aplicativo' : 'site';
   const META_SYNC = ['cats', 'deletePassword'];          // chaves da store "meta" que são sincronizadas
+  const ADMIN_RPC_NAMES = new Set([
+    'admin_is_authorized',
+    'admin_get_area_password_salt',
+    'admin_set_area_password',
+    'admin_verify_area_password',
+    'admin_reset_delete_password',
+    'admin_reset_user_password'
+  ]);
   const LS = { fila: 'ic_fila', cursor: 'ic_cursor', init: 'ic_init', audit: 'ic_audit_queue', logado: 'ic_logado' };
   const $ = id => document.getElementById(id);
   const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -26,6 +34,16 @@
   let conectado = false, enviando = false, puxando = false, pendentePuxar = false;
   let erroSync = false, erroLogs = false, aplicando = false, painelAtual = '', emailRecuperacao = '', sessaoRecuperacao = null;
   let timerEnvio = null, timerPuxar = null, timerRetry = null, timers = [];
+
+  window.intactoAdminRpc = async (name, args = {}) => {
+    if (!ADMIN_RPC_NAMES.has(name)) throw new Error('Operação administrativa não permitida.');
+    if (!sb || !sessao || !entrou || offline || !navigator.onLine) {
+      throw new Error('Entre no sistema com conexão ativa para usar a Área Admin.');
+    }
+    const { data, error } = await sb.rpc(name, args);
+    if (error) throw error;
+    return data;
+  };
 
   /* ------------------------------------------------------------------ fila de alterações locais */
   let seq = 0;
