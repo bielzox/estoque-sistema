@@ -120,6 +120,11 @@ Para liberar o painel administrativo e a **Área Admin** do estoque:
 4. Use **Aprovar e-mail de usuário** somente depois de verificar a identidade da
    pessoa por outro meio. Isso confirma a conta sem exigir o link enviado por
    e-mail e fica registrado na auditoria.
+5. O botão **Aprovar acesso admin** concede a uma conta existente acesso ao
+   painel administrativo. Só uma conta que já seja administradora pode aprovar
+   outras contas; a senha da Área Admin é solicitada novamente.
+6. Para liberar o primeiro administrador, use o SQL do passo 1 acima uma única
+   vez. Depois disso, os demais acessos podem ser aprovados pelo botão do painel.
 
 As permissões são verificadas no Supabase em cada operação. Não coloque uma
 chave `service_role` no `config.js` nem no código do navegador. Ao atualizar

@@ -520,6 +520,69 @@ end $$;
 revoke all on function public.admin_confirm_user_email(text, text) from public, anon;
 grant execute on function public.admin_confirm_user_email(text, text) to authenticated;
 
+drop function if exists public.admin_approve_admin_user(text, text);
+create function public.admin_approve_admin_user(
+  p_email text,
+  p_admin_hash text
+)
+returns text
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_actor_id uuid := auth.uid();
+  v_actor_email text;
+  v_target_id uuid;
+  v_inserted integer;
+begin
+  if v_actor_id is null or not public.admin_is_authorized() then
+    raise exception 'Acesso administrativo obrigatório.';
+  end if;
+  if p_email is null or length(btrim(p_email)) > 320
+     or btrim(p_email) !~* '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$' then
+    raise exception 'Informe um e-mail válido.';
+  end if;
+  if not public.admin_verify_area_password(p_admin_hash) then
+    return 'invalid_admin_password';
+  end if;
+
+  select id
+    into v_target_id
+    from auth.users
+    where lower(email) = lower(btrim(p_email))
+    limit 1;
+  if v_target_id is null then
+    raise exception 'Não encontramos uma conta com esse e-mail.';
+  end if;
+
+  insert into public.admin_allowlist (user_id)
+  values (v_target_id)
+  on conflict (user_id) do nothing;
+  get diagnostics v_inserted = row_count;
+  if v_inserted = 0 then
+    return 'already_authorized';
+  end if;
+
+  select coalesce(email, 'usuário')
+    into v_actor_email
+    from auth.users
+    where id = v_actor_id;
+  insert into public.audit_logs (actor_id, actor_email, title, description, severity, source, details)
+  values (
+    v_actor_id,
+    coalesce(v_actor_email, 'usuário'),
+    'Acesso administrativo aprovado',
+    'Um administrador concedeu acesso ao painel administrativo para uma conta.',
+    'aviso',
+    'site',
+    jsonb_build_object('email', lower(btrim(p_email)))
+  );
+  return 'approved';
+end $$;
+revoke all on function public.admin_approve_admin_user(text, text) from public, anon;
+grant execute on function public.admin_approve_admin_user(text, text) to authenticated;
+
 create or replace function public.admin_get_clear_password_salt()
 returns text
 language plpgsql

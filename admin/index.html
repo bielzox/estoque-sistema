@@ -145,7 +145,7 @@ dialog menu button{margin:0}
     </div>
   </section>
   <div class="actions" style="justify-content:flex-end;margin-bottom:12px">
-    <button id="adminApproveUserButton" type="button" class="secondary" hidden>Aprovar usuário</button>
+    <button id="adminApproveUserButton" type="button" class="secondary" hidden>Aprovar acesso admin</button>
     <button id="adminAreaButton" type="button" class="secondary" hidden>Área Admin</button>
     <button id="configureClearPassword" type="button" class="secondary" hidden>Configurar senha para limpar</button>
     <button id="logout" type="button" class="secondary" hidden>Sair da conta</button>
@@ -233,6 +233,11 @@ dialog menu button{margin:0}
     <p>Esta ação confirma o e-mail sem enviar o link de verificação. Confirme a identidade da pessoa por outro meio antes de continuar.</p>
     <label>E-mail da conta<input id="adminConfirmEmail" type="email" autocomplete="off" maxlength="320"></label>
     <menu><button type="button" class="secondary adminAreaBack">Voltar</button><button id="adminConfirmEmailSave" type="button">Aprovar e-mail</button></menu>
+  </section>
+  <section id="adminAreaGrantAdmin" hidden>
+    <p>Concede acesso administrativo ao painel para a conta informada. Esta ação não confirma o e-mail no Supabase.</p>
+    <label>E-mail da conta<input id="adminGrantAdminEmail" type="email" autocomplete="off" maxlength="320"></label>
+    <menu><button type="button" class="secondary adminAreaBack">Voltar</button><button id="adminGrantAdminSave" type="button">Aprovar acesso admin</button></menu>
   </section>
   <section id="adminAreaChange" hidden>
     <label>Nova senha administrativa (mínimo de 8 caracteres)<input id="adminAreaChangeNew" type="password" autocomplete="new-password" minlength="8" maxlength="128"></label>

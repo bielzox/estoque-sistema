@@ -77,7 +77,7 @@
     }, key, 256));
   }
 
-  const ADMIN_AREA_PANELS = ['adminAreaSetup', 'adminAreaVerify', 'adminAreaOptions', 'adminAreaDelete', 'adminAreaUser', 'adminAreaConfirmEmail', 'adminAreaChange'];
+  const ADMIN_AREA_PANELS = ['adminAreaSetup', 'adminAreaVerify', 'adminAreaOptions', 'adminAreaDelete', 'adminAreaUser', 'adminAreaConfirmEmail', 'adminAreaGrantAdmin', 'adminAreaChange'];
 
   function showAdminAreaPanel(panel, title, info) {
     ADMIN_AREA_PANELS.forEach(id => { $(id).hidden = id !== panel; });
@@ -88,11 +88,15 @@
   }
 
   function clearAdminAreaInputs() {
-    ['adminAreaNew', 'adminAreaConfirm', 'adminAreaPassword', 'adminDeleteNew', 'adminDeleteConfirm', 'adminUserEmail', 'adminUserNew', 'adminUserConfirm', 'adminConfirmEmail', 'adminAreaChangeNew', 'adminAreaChangeConfirm']
+    ['adminAreaNew', 'adminAreaConfirm', 'adminAreaPassword', 'adminDeleteNew', 'adminDeleteConfirm', 'adminUserEmail', 'adminUserNew', 'adminUserConfirm', 'adminConfirmEmail', 'adminGrantAdminEmail', 'adminAreaChangeNew', 'adminAreaChangeConfirm']
       .forEach(id => { $(id).value = ''; });
   }
 
   function showAdminAreaNextPanel() {
+    if (adminAreaNextPanel === 'grantAdmin') {
+      showAdminAreaPanel('adminAreaGrantAdmin', 'Aprovar acesso ao painel admin', 'Concede privilégios administrativos à conta informada.');
+      return;
+    }
     if (adminAreaNextPanel === 'confirmEmail') {
       showAdminAreaPanel('adminAreaConfirmEmail', 'Aprovar usuário', 'Verifique a identidade da pessoa antes de confirmar o e-mail.');
       return;
@@ -316,6 +320,39 @@
     } catch (error) {
       console.error('Falha ao aprovar o e-mail da conta:', error);
       $('adminAreaMessage').textContent = `Não foi possível aprovar o e-mail: ${error.message || error}`;
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  async function approveAdminAccess() {
+    const email = $('adminGrantAdminEmail').value.trim();
+    if (!email || $('adminGrantAdminEmail').validity.typeMismatch) {
+      $('adminAreaMessage').textContent = 'Informe um e-mail válido.';
+      $('adminGrantAdminEmail').focus();
+      return;
+    }
+    if (!window.confirm(`Conceder acesso administrativo ao painel para ${email}? Essa conta poderá acessar os recursos administrativos.`)) return;
+    const button = $('adminGrantAdminSave');
+    button.disabled = true;
+    try {
+      const { data, error } = await state.client.rpc('admin_approve_admin_user', {
+        p_email: email,
+        p_admin_hash: areaPasswordHash
+      });
+      if (error) throw error;
+      if (data === 'invalid_admin_password') throw new Error('A senha administrativa não foi confirmada.');
+      if (data === 'already_authorized') {
+        $('adminAreaMessage').textContent = 'Esta conta já tem acesso administrativo.';
+        $('adminAreaMessage').classList.add('success');
+        return;
+      }
+      if (data !== 'approved') throw new Error('O banco não confirmou a aprovação do acesso administrativo.');
+      $('adminAreaDialog').close();
+      showMessage(`Acesso administrativo concedido para ${email}.`, 'success');
+    } catch (error) {
+      console.error('Falha ao aprovar acesso administrativo:', error);
+      $('adminAreaMessage').textContent = `Não foi possível aprovar o acesso: ${error.message || error}`;
     } finally {
       button.disabled = false;
     }
@@ -864,9 +901,9 @@
         throw new Error(`Não foi possível validar a permissão. Execute supabase/setup.sql no Supabase. ${authorizationError.message}`);
       }
       if (!authorized) {
-        setStatus(`Conta conectada: ${data.session.user.email || 'usuário'}`);
-        showMessage('Acesso negado. Autorize esta conta na tabela de administradores pelo SQL Editor do Supabase.');
-        $('rows').innerHTML = '<tr><td class="empty" colspan="8">Esta conta não está autorizada como administradora.</td></tr>';
+        setStatus(`Conta sem acesso administrativo: ${data.session.user.email || 'usuário'}`);
+        showMessage('Esta conta ainda não tem acesso ao Painel Admin. Entre com uma conta administradora já autorizada e use “Aprovar acesso admin”. Se este for o primeiro administrador do projeto, a liberação inicial precisa ser feita uma única vez no SQL Editor do Supabase.');
+        $('rows').innerHTML = '<tr><td class="empty" colspan="8">Aguardando autorização de um administrador existente. O primeiro administrador precisa ser liberado no Supabase.</td></tr>';
         return;
       }
       state.allowed = true;
@@ -983,7 +1020,7 @@
   });
   $('configureClearPassword').addEventListener('click', openPasswordSetup);
   $('adminAreaButton').addEventListener('click', openAdminArea);
-  $('adminApproveUserButton').addEventListener('click', () => openAdminArea('confirmEmail'));
+  $('adminApproveUserButton').addEventListener('click', () => openAdminArea('grantAdmin'));
   $('adminAreaCancelSetup').addEventListener('click', () => $('adminAreaDialog').close());
   $('adminAreaCancelVerify').addEventListener('click', () => $('adminAreaDialog').close());
   $('adminAreaCloseOptions').addEventListener('click', () => $('adminAreaDialog').close());
@@ -998,6 +1035,7 @@
   $('adminDeleteSave').addEventListener('click', resetDeletePassword);
   $('adminUserSave').addEventListener('click', resetUserPassword);
   $('adminConfirmEmailSave').addEventListener('click', approveUserEmail);
+  $('adminGrantAdminSave').addEventListener('click', approveAdminAccess);
   $('adminAreaDialog').addEventListener('close', () => {
     areaPasswordSalt = '';
     areaPasswordHash = '';
