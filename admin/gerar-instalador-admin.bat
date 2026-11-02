@@ -19,7 +19,7 @@ goto pronto
 echo Aplicando o icone do painel e finalizando o instalador...
 if not exist "instalador-admin\win-unpacked\Intacto Car Painel Admin.exe" goto falha
 if not exist "instalador-admin\.icon-ico\icon.ico" goto falha
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$editor = Get-ChildItem (Join-Path $env:LOCALAPPDATA 'electron-builder\Cache\winCodeSign') -Filter 'rcedit-x64.exe' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName; if (-not $editor) { exit 2 }; & $editor '%CD%\instalador-admin\win-unpacked\Intacto Car Painel Admin.exe' --set-icon '%CD%\instalador-admin\.icon-ico\icon.ico' --set-version-string ProductName 'Intacto Car Painel Admin' --set-version-string FileDescription 'Painel administrativo Intacto Car' --set-file-version 1.0.11 --set-product-version 1.0.11.0; exit $LASTEXITCODE"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$editor = Get-ChildItem (Join-Path $env:LOCALAPPDATA 'electron-builder\Cache\winCodeSign') -Filter 'rcedit-x64.exe' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName; if (-not $editor) { exit 2 }; & $editor '%CD%\instalador-admin\win-unpacked\Intacto Car Painel Admin.exe' --set-icon '%CD%\instalador-admin\.icon-ico\icon.ico' --set-version-string ProductName 'Intacto Car Painel Admin' --set-version-string FileDescription 'Painel administrativo Intacto Car' --set-file-version 1.0.13 --set-product-version 1.0.13.0; exit $LASTEXITCODE"
 if errorlevel 1 goto falha
 call "node_modules\.bin\electron-builder.cmd" --win --x64 --prepackaged "instalador-admin\win-unpacked" --config admin\electron-builder.admin.json --config.win.signAndEditExecutable=false
 if errorlevel 1 goto falha

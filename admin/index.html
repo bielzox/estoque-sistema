@@ -109,7 +109,7 @@ dialog menu button{margin:0}
 @media(prefers-reduced-motion:reduce){.auth-card,.auth-form input,.auth-form button,.audit-details summary{animation:none!important;transition:none!important}}
 </style>
 <script src="../config.js"></script>
-<script src="./admin.js?v=3" defer></script>
+<script src="./admin.js?v=5" defer></script>
 </head>
 <body>
 <header>
@@ -145,6 +145,7 @@ dialog menu button{margin:0}
     </div>
   </section>
   <div class="actions" style="justify-content:flex-end;margin-bottom:12px">
+    <button id="adminApproveUserButton" type="button" class="secondary" hidden>Aprovar usuário</button>
     <button id="adminAreaButton" type="button" class="secondary" hidden>Área Admin</button>
     <button id="configureClearPassword" type="button" class="secondary" hidden>Configurar senha para limpar</button>
     <button id="logout" type="button" class="secondary" hidden>Sair da conta</button>
@@ -212,6 +213,7 @@ dialog menu button{margin:0}
     <div class="admin-area-options">
       <button id="adminAreaDeleteOption" type="button" class="secondary">Senha de exclusão</button>
       <button id="adminAreaUserOption" type="button" class="secondary">Senha de usuário</button>
+      <button id="adminAreaConfirmEmailOption" type="button" class="secondary">Aprovar e-mail de usuário</button>
       <button id="adminAreaChangeOption" type="button" class="secondary">Alterar senha administrativa</button>
     </div>
     <menu><button id="adminAreaCloseOptions" type="button" class="secondary">Fechar</button></menu>
@@ -226,6 +228,11 @@ dialog menu button{margin:0}
     <label>Nova senha (mínimo de 8 caracteres)<input id="adminUserNew" type="password" autocomplete="new-password" minlength="8" maxlength="128"></label>
     <label>Confirmar nova senha<input id="adminUserConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="128"></label>
     <menu><button type="button" class="secondary adminAreaBack">Voltar</button><button id="adminUserSave" type="button" class="danger">Redefinir senha</button></menu>
+  </section>
+  <section id="adminAreaConfirmEmail" hidden>
+    <p>Esta ação confirma o e-mail sem enviar o link de verificação. Confirme a identidade da pessoa por outro meio antes de continuar.</p>
+    <label>E-mail da conta<input id="adminConfirmEmail" type="email" autocomplete="off" maxlength="320"></label>
+    <menu><button type="button" class="secondary adminAreaBack">Voltar</button><button id="adminConfirmEmailSave" type="button">Aprovar e-mail</button></menu>
   </section>
   <section id="adminAreaChange" hidden>
     <label>Nova senha administrativa (mínimo de 8 caracteres)<input id="adminAreaChangeNew" type="password" autocomplete="new-password" minlength="8" maxlength="128"></label>

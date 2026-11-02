@@ -117,6 +117,9 @@ Para liberar o painel administrativo e a **Área Admin** do estoque:
 3. Use **Senha de exclusão** para redefinir a senha compartilhada do estoque, ou
    **Senha de usuário** para informar o e-mail e a nova senha da conta. A
    redefinição de uma conta encerra as sessões existentes dela.
+4. Use **Aprovar e-mail de usuário** somente depois de verificar a identidade da
+   pessoa por outro meio. Isso confirma a conta sem exigir o link enviado por
+   e-mail e fica registrado na auditoria.
 
 As permissões são verificadas no Supabase em cada operação. Não coloque uma
 chave `service_role` no `config.js` nem no código do navegador. Ao atualizar

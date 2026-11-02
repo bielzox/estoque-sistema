@@ -5,7 +5,7 @@
   const MAX_SELECTED = 500;
   const PASSWORD_ITERATIONS = 210000;
   const CDN = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js';
-  const CONTROL_IDS = ['refresh', 'searchTitle', 'searchUser', 'source', 'severity', 'fromDate', 'toDate', 'applyFilters', 'clearFilters', 'export', 'previous', 'next', 'selectPage', 'selectPageButton', 'deleteSelected', 'configureClearPassword', 'adminAreaButton'];
+  const CONTROL_IDS = ['refresh', 'searchTitle', 'searchUser', 'source', 'severity', 'fromDate', 'toDate', 'applyFilters', 'clearFilters', 'export', 'previous', 'next', 'selectPage', 'selectPageButton', 'deleteSelected', 'configureClearPassword', 'adminAreaButton', 'adminApproveUserButton'];
   const $ = id => document.getElementById(id);
   const state = { client: null, page: 0, count: 0, allowed: false, channel: null, selectedIds: new Set(), loading: false, mutating: false };
   let auditRefreshTimer = null;
@@ -13,6 +13,7 @@
   let reloadAfterCurrent = false;
   let areaPasswordSalt = '';
   let areaPasswordHash = '';
+  let adminAreaNextPanel = 'options';
 
   function setControlsEnabled(enabled) {
     CONTROL_IDS.forEach(id => { $(id).disabled = !enabled; });
@@ -76,7 +77,7 @@
     }, key, 256));
   }
 
-  const ADMIN_AREA_PANELS = ['adminAreaSetup', 'adminAreaVerify', 'adminAreaOptions', 'adminAreaDelete', 'adminAreaUser', 'adminAreaChange'];
+  const ADMIN_AREA_PANELS = ['adminAreaSetup', 'adminAreaVerify', 'adminAreaOptions', 'adminAreaDelete', 'adminAreaUser', 'adminAreaConfirmEmail', 'adminAreaChange'];
 
   function showAdminAreaPanel(panel, title, info) {
     ADMIN_AREA_PANELS.forEach(id => { $(id).hidden = id !== panel; });
@@ -87,12 +88,21 @@
   }
 
   function clearAdminAreaInputs() {
-    ['adminAreaNew', 'adminAreaConfirm', 'adminAreaPassword', 'adminDeleteNew', 'adminDeleteConfirm', 'adminUserEmail', 'adminUserNew', 'adminUserConfirm', 'adminAreaChangeNew', 'adminAreaChangeConfirm']
+    ['adminAreaNew', 'adminAreaConfirm', 'adminAreaPassword', 'adminDeleteNew', 'adminDeleteConfirm', 'adminUserEmail', 'adminUserNew', 'adminUserConfirm', 'adminConfirmEmail', 'adminAreaChangeNew', 'adminAreaChangeConfirm']
       .forEach(id => { $(id).value = ''; });
   }
 
-  async function openAdminArea() {
+  function showAdminAreaNextPanel() {
+    if (adminAreaNextPanel === 'confirmEmail') {
+      showAdminAreaPanel('adminAreaConfirmEmail', 'Aprovar usuário', 'Verifique a identidade da pessoa antes de confirmar o e-mail.');
+      return;
+    }
+    showAdminAreaPanel('adminAreaOptions', 'Área Admin', 'Selecione a senha que deseja redefinir.');
+  }
+
+  async function openAdminArea(nextPanel = 'options') {
     if (!state.allowed) return;
+    adminAreaNextPanel = nextPanel;
     clearAdminAreaInputs();
     areaPasswordSalt = '';
     areaPasswordHash = '';
@@ -107,6 +117,7 @@
       }
       $('adminAreaDialog').showModal();
     } catch (error) {
+      adminAreaNextPanel = 'options';
       console.error('Falha ao abrir a Área Admin:', error);
       showMessage(`Não foi possível abrir a Área Admin: ${adminAreaErrorMessage(error)}`);
     }
@@ -137,7 +148,7 @@
       areaPasswordSalt = bytesToHex(salt);
       areaPasswordHash = hash;
       clearAdminAreaInputs();
-      showAdminAreaPanel('adminAreaOptions', 'Área Admin', 'Senha cadastrada. Selecione a ação desejada.');
+      showAdminAreaNextPanel();
       $('adminAreaMessage').textContent = 'Senha administrativa cadastrada com segurança.';
       $('adminAreaMessage').classList.add('success');
     } catch (error) {
@@ -163,7 +174,7 @@
       }
       areaPasswordHash = passwordHash;
       clearAdminAreaInputs();
-      showAdminAreaPanel('adminAreaOptions', 'Área Admin', 'Acesso confirmado. Selecione a senha que deseja redefinir.');
+      showAdminAreaNextPanel();
     } catch (error) {
       console.error('Falha ao validar a senha administrativa:', error);
       $('adminAreaMessage').textContent = `Não foi possível validar a senha: ${error.message || error}`;
@@ -272,6 +283,39 @@
     } catch (error) {
       console.error('Falha ao redefinir a senha da conta:', error);
       $('adminAreaMessage').textContent = `Não foi possível redefinir a senha: ${error.message || error}`;
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  async function approveUserEmail() {
+    const email = $('adminConfirmEmail').value.trim();
+    if (!email || $('adminConfirmEmail').validity.typeMismatch) {
+      $('adminAreaMessage').textContent = 'Informe um e-mail válido.';
+      $('adminConfirmEmail').focus();
+      return;
+    }
+    if (!window.confirm(`Aprovar o e-mail ${email} sem confirmação pelo link enviado? Confirme a identidade da pessoa por outro meio antes de continuar.`)) return;
+    const button = $('adminConfirmEmailSave');
+    button.disabled = true;
+    try {
+      const { data, error } = await state.client.rpc('admin_confirm_user_email', {
+        p_email: email,
+        p_admin_hash: areaPasswordHash
+      });
+      if (error) throw error;
+      if (data === 'invalid_admin_password') throw new Error('A senha administrativa não foi confirmada.');
+      if (data === 'already_confirmed') {
+        $('adminAreaMessage').textContent = 'Este e-mail já estava aprovado.';
+        $('adminAreaMessage').classList.add('success');
+        return;
+      }
+      if (data !== 'approved') throw new Error('O banco não confirmou a aprovação do e-mail.');
+      $('adminAreaDialog').close();
+      showMessage(`E-mail ${email} aprovado. A pessoa já pode entrar com a senha cadastrada.`, 'success');
+    } catch (error) {
+      console.error('Falha ao aprovar o e-mail da conta:', error);
+      $('adminAreaMessage').textContent = `Não foi possível aprovar o e-mail: ${error.message || error}`;
     } finally {
       button.disabled = false;
     }
@@ -574,7 +618,7 @@
       $('previous').disabled = state.page === 0;
       $('next').disabled = from + PAGE_SIZE >= state.count;
       $('summary').textContent = `${state.count} registro(s) com os filtros atuais · retenção de 12 meses`;
-      setStatus('Permissão administrativa validada pelo Supabase.');
+      setStatus('Permissões administrativas.');
     } catch (error) {
       console.error('Falha ao consultar auditoria:', error);
       showMessage(`Não foi possível carregar os registros: ${error.message || error}`);
@@ -830,6 +874,7 @@
       $('logout').hidden = false;
       $('configureClearPassword').hidden = false;
       $('adminAreaButton').hidden = false;
+      $('adminApproveUserButton').hidden = false;
       setStatus(`Administradora: ${data.session.user.email || 'conta autorizada'}`);
       state.channel = state.client
         .channel('audit-logs-admin')
@@ -938,6 +983,7 @@
   });
   $('configureClearPassword').addEventListener('click', openPasswordSetup);
   $('adminAreaButton').addEventListener('click', openAdminArea);
+  $('adminApproveUserButton').addEventListener('click', () => openAdminArea('confirmEmail'));
   $('adminAreaCancelSetup').addEventListener('click', () => $('adminAreaDialog').close());
   $('adminAreaCancelVerify').addEventListener('click', () => $('adminAreaDialog').close());
   $('adminAreaCloseOptions').addEventListener('click', () => $('adminAreaDialog').close());
@@ -945,14 +991,17 @@
   $('adminAreaVerifyButton').addEventListener('click', verifyAreaPassword);
   $('adminAreaDeleteOption').addEventListener('click', () => showAdminAreaPanel('adminAreaDelete', 'Redefinir senha de exclusão', 'A nova senha será sincronizada com os demais aparelhos.'));
   $('adminAreaUserOption').addEventListener('click', () => showAdminAreaPanel('adminAreaUser', 'Redefinir senha de usuário', 'Informe o e-mail cadastrado e defina uma nova senha.'));
+  $('adminAreaConfirmEmailOption').addEventListener('click', () => showAdminAreaPanel('adminAreaConfirmEmail', 'Aprovar e-mail de usuário', 'Esta ação substitui a confirmação pelo link do e-mail. Verifique a identidade da pessoa antes de aprovar.'));
   $('adminAreaChangeOption').addEventListener('click', () => showAdminAreaPanel('adminAreaChange', 'Alterar senha administrativa', 'Confirme uma nova senha para proteger a Área Admin.'));
   document.querySelectorAll('.adminAreaBack').forEach(button => button.addEventListener('click', () => showAdminAreaPanel('adminAreaOptions', 'Área Admin', 'Selecione a senha que deseja redefinir.')));
   $('adminAreaChangeSave').addEventListener('click', changeAreaPassword);
   $('adminDeleteSave').addEventListener('click', resetDeletePassword);
   $('adminUserSave').addEventListener('click', resetUserPassword);
+  $('adminConfirmEmailSave').addEventListener('click', approveUserEmail);
   $('adminAreaDialog').addEventListener('close', () => {
     areaPasswordSalt = '';
     areaPasswordHash = '';
+    adminAreaNextPanel = 'options';
     clearAdminAreaInputs();
   });
   $('clearPasswordSetupForm').addEventListener('submit', saveClearPassword);

@@ -456,6 +456,70 @@ end $$;
 revoke all on function public.admin_reset_user_password(text, text, text) from public, anon;
 grant execute on function public.admin_reset_user_password(text, text, text) to authenticated;
 
+drop function if exists public.admin_confirm_user_email(text, text);
+create function public.admin_confirm_user_email(
+  p_email text,
+  p_admin_hash text
+)
+returns text
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_actor_id uuid := auth.uid();
+  v_actor_email text;
+  v_target_id uuid;
+  v_email_confirmed_at timestamptz;
+begin
+  if v_actor_id is null or not public.admin_is_authorized() then
+    raise exception 'Acesso administrativo obrigatório.';
+  end if;
+  if p_email is null or length(btrim(p_email)) > 320
+     or btrim(p_email) !~* '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$' then
+    raise exception 'Informe um e-mail válido.';
+  end if;
+  if not public.admin_verify_area_password(p_admin_hash) then
+    return 'invalid_admin_password';
+  end if;
+
+  select id, email_confirmed_at
+    into v_target_id, v_email_confirmed_at
+    from auth.users
+    where lower(email) = lower(btrim(p_email))
+    limit 1
+    for update;
+  if v_target_id is null then
+    raise exception 'Não encontramos uma conta com esse e-mail.';
+  end if;
+  if v_email_confirmed_at is not null then
+    return 'already_confirmed';
+  end if;
+
+  update auth.users
+    set email_confirmed_at = now(),
+        updated_at = now()
+    where id = v_target_id;
+
+  select coalesce(email, 'usuário')
+    into v_actor_email
+    from auth.users
+    where id = v_actor_id;
+  insert into public.audit_logs (actor_id, actor_email, title, description, severity, source, details)
+  values (
+    v_actor_id,
+    coalesce(v_actor_email, 'usuário'),
+    'E-mail de usuário aprovado',
+    'Um administrador confirmou manualmente o e-mail de uma conta pela Área Admin.',
+    'aviso',
+    'site',
+    jsonb_build_object('email', lower(btrim(p_email)))
+  );
+  return 'approved';
+end $$;
+revoke all on function public.admin_confirm_user_email(text, text) from public, anon;
+grant execute on function public.admin_confirm_user_email(text, text) to authenticated;
+
 create or replace function public.admin_get_clear_password_salt()
 returns text
 language plpgsql
