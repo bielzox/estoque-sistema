@@ -401,6 +401,7 @@ try{
       <input class="grow" id="q" type="search" placeholder="Buscar por nome, código, marca, aplicação ou local">
       <select id="fs" aria-label="Situação"><option value="all">Todas as situações</option><option value="ok">Em estoque</option><option value="low">Estoque baixo</option><option value="zero">Sem estoque</option></select>
       <select id="fo" aria-label="Ordem"><option value="nome">Ordem: nome</option><option value="codigo">Ordem: código</option><option value="qtd">Ordem: menor quantidade</option></select>
+      <button class="p" id="registrarVenda" type="button">+ Registrar Venda</button>
       <button class="p" id="novo">+ Novo produto</button>
     </div>
     <div class="sum" id="sum"></div>
@@ -936,9 +937,9 @@ function preview(){const p=mprod(),q=/^\d+$/.test($('mqt').value.trim())?parseIn
   const novo=p.qtd+(mv.t==='E'?q:-q);
   e.innerHTML=`Estoque atual: <b>${p.qtd}</b>`+(q?` → após a movimentação: <b class="${novo<0?'zero':''}">${novo}</b>${novo<0?' (insuficiente)':''}`:'')}
 function setTipo(t){mv.t=t;$('sE').classList.toggle('on',t==='E');$('sS').classList.toggle('on',t==='S');
-  $('mtit').textContent=t==='E'?'Registrar entrada':'Registrar saída';
+  $('mtit').textContent=t==='E'?'Registrar entrada':mv.venda?'Registrar venda':'Registrar saída';
   $('mmo').innerHTML=MOT[t].map(m=>`<option>${m}</option>`).join('');prefill();preview()}
-function openMov(id,t){mv={id:id||null,t};
+function openMov(id,t,venda=false){mv={id:id||null,t,venda};
   $('pick').hidden=!!id;$('fixed').hidden=!id;
   if(id){const p=prods.find(x=>x.id===id);$('fixn').textContent=`${p.codigo} — ${p.nome}`}
   else{if(!prods.length){avisar('Cadastre um produto primeiro.');return}$('mps').value='';fillSel()}
@@ -948,6 +949,7 @@ $('sE').onclick=()=>setTipo('E');$('sS').onclick=()=>setTipo('S');
 $('mps').oninput=fillSel;$('msel').onchange=onProd;$('mqt').oninput=preview;
 $('mfiles').onchange=()=>{$('mfilesname').textContent=[...$('mfiles').files].map(f=>f.name).join(', ')||'Nenhum arquivo selecionado'};
 $('bE').onclick=()=>openMov(null,'E');$('bS').onclick=()=>openMov(null,'S');
+$('registrarVenda').onclick=()=>openMov(null,'S',true);
 $('mcx').onclick=()=>$('dmov').close();
 $('dmov').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.tagName==='INPUT'&&e.target.id!=='mps'){e.preventDefault();$('mok').click()}});
 $('mok').onclick=async()=>{
